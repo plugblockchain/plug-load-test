@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@polkadot/api": "0.96.1",
+    "@plugnet/plug-sdk-types": "git+https://github.com/plugblockchain/plug-sdk-types.git#1.0.0-rc1"
+  }
+}
