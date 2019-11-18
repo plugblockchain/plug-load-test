@@ -1,7 +1,12 @@
 {
   "dependencies": {
-    "@polkadot/api": "0.96.1",
+    "@plugnet/keyring": "=1.1.100",
     "@plugnet/plug-sdk-types": "git+https://github.com/plugblockchain/plug-sdk-types.git#1.0.0-rc1",
-    "@plugnet/keyring": "=1.1.100"
+    "@polkadot/api": "0.96.1",
+    "argparse": "^1.0.10",
+    "mocha": "^6.2.2"
+  },
+  "scripts": {
+    "test": "mocha --reporter nyan"
   }
 }

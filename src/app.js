@@ -5,12 +5,16 @@
 const { ApiPromise, WsProvider } = require('@polkadot/api');
 const { stringToU8a, u8aToHex } = require('@polkadot/util');
 const PlugRuntimeTypes = require('@plugnet/plug-sdk-types');
-const Keyring = require('@polkadot/keyring')
 const testingPairs = require('@polkadot/keyring/testingPairs');
+//const ArgumentParser = require('argparse')
 
-
+const APP_SUCCESS = 0;
+const APP_FAIL_TRANSACTION_REJECTED = 1;
+const APP_FAIL_TRANSACTION_TIMEOUT = 2;
 
 async function main () {
+  
+
   let addr = 'ws://127.0.0.1:9944'
   if (process.argv.length > 2) {
       addr = "ws://"+process.argv[2];
@@ -36,81 +40,86 @@ async function main () {
 
 
   // Retrieve the chain & node information information via rpc calls
-  const [chain, nodeName, nodeVersion, result] = await Promise.all([
+  const [chain, nodeName, nodeVersion] = await Promise.all([
     api.rpc.system.chain(),
     api.rpc.system.name(),
     api.rpc.system.version(),
-    api.consts.balances.creationFee.toNumber()
   ]);
 
   //console.log(api.query)
 
   console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
-  console.log(`Query result ${result}`);
 
-  // The actual address that we will use
-  const ADDR = '5DTestUPts3kjeXSTMyerHihn1uwMfLj8vU8sqF7qYrFabHE';
 
-  // Retrieve the last timestamp
-  const now = await api.query.timestamp.now();
+  while (true){
+    const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
+    let delay_ms = 10000;
 
-  // Retrieve the account nonce via the system module
-  const nonce = await api.query.system.accountNonce(ADDR);
+    [sender, receiver] = selectSendReceiveKeypairs(keypairs);
 
-  // Retrieve the account balance via the balances module
-  const balance = await api.query.balances.freeBalance(ADDR);
+    let transaction_success = false;
+    // Make a transfer from Alice to BOB, waiting for inclusion
+    const unsub = await api.tx.balances
+    .transfer(receiver.address, 12345)
+    .signAndSend(sender, (result) => {
+      console.log(`Current status is ${result.status}`);
 
-  console.log(`${now}: balance of ${balance} and a nonce of ${nonce}`);
+      if (result.isCompleted) {
+        if (result.isFinalized) {
+          transaction_success = true;
+          console.log(`Transaction included at blockHash ${result.status.asFinalized}`);
+        }
+        else { // error
+          throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction failed ${result.status}`];
+        }
+        
+        unsub();
+      }
+    });
 
-  const [lastHeader] = await Promise.all([
-    api.rpc.chain.getHeader()
-  ]);
+    await sleep(delay_ms);
 
-  const lastHdr = await api.rpc.chain.getHeader();
-
-  // Retrieve the balance at both the current and the parent hashes
-  const [balanceNow, balancePrev] = await Promise.all([
-    api.query.balances.freeBalance.at(lastHdr.hash, ADDR),
-    api.query.balances.freeBalance.at(lastHdr.parentHash, ADDR)
-  ]);
-
-  // Display the difference
-  console.log(`The delta was ${balanceNow.sub(balancePrev)}`);
-
-  const alice = keyring.alice;
-
-  const message = stringToU8a('this is our message');
-  const signature = alice.sign(message);
-  const isValid = alice.verify(message, signature);
-
-  console.log(`The signature ${u8aToHex(signature)}, is ${isValid ? '' : 'in'}valid`);
-
-  // Make a transfer from Alice to BOB, waiting for inclusion
-  const unsub = await api.tx.balances
-  .transfer(keyring.bob.address, 12345)
-  .signAndSend(alice, (result) => {
-    console.log(`Current status is ${result.status}`);
-
-    if (result.status.isFinalized) {
-      console.log(`Transaction included at blockHash ${result.status.asFinalized}`);
-      unsub();
+    if (transaction_success) {
+      count_transactions++;
+      if (count_transactions > max_transactions) {
+        return APP_SUCCESS;
+      }
     }
-  });
-
-  const unsub2 = await api.tx.balances
-  .transfer(keyring.alice.address, 12345)
-  .signAndSend(keyring.bob, (result) => {
-    console.log(`Current status is ${result.status}`);
-
-    if (result.status.isFinalized) {
-      console.log(`Transaction included at blockHash ${result.status.asFinalized}`);
-      unsub2();
-    }
-  });
-
-  setTimeout(() => console.log("Done"), 1000);
-
-  
+    else if (transaction_success == false){
+      throw [APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"]
+    }   
+  }
 }
 
-main().catch(console.error);
+
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function selectSendReceiveKeypairs(keypairs){
+  if (keypairs.length <= 1) {
+    return [null, null];
+  }
+  
+  const sender_index = Math.floor(Math.random() * keypairs.length);
+  sender = keypairs.splice(sender_index,1)[0];
+  
+  receiver = keypairs[Math.floor(Math.random() * keypairs.length)];
+  
+  return [sender, receiver];
+}
+
+if (require.main === module) {
+  main()
+    .then(result => process.exit(result))
+    .catch(fail => { 
+    console.error(fail[1]); 
+    process.exit(fail[0]);
+  });
+} else {
+  // Export modules for testing
+  module.exports = {
+    selectSendReceiveKeypairs: selectSendReceiveKeypairs
+  }
+}
