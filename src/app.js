@@ -43,17 +43,16 @@ async function main () {
     api.rpc.system.version(),
   ]);
 
+
   console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
+
+  const start_block_number = await getFinalizedBlockNumber(api)
 
   const keyring = testingPairs.default({ type: 'sr25519'});
   const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
 
   const request_ms = 9000;
   const timeout_ms = 5000;
-
-  // let request_timer = setInterval(function() {
-
-  // }, request_ms);
 
   const number_of_blocks = 10;
 
@@ -66,14 +65,21 @@ async function main () {
     } else {
       throw [APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"]
     }   
-
-    const hash = await api.rpc.chain.getFinalizedHead();
-    const header = await api.rpc.chain.getHeader(hash);
     
-    if (header.number >= number_of_blocks) {
+    const block_delta = await getFinalizedBlockNumber(api) - start_block_number;
+
+    console.log(`At block: ${block_delta} of ${number_of_blocks}`)
+    
+    if (block_delta >= number_of_blocks) {
       return APP_SUCCESS;
     }
   }
+}
+
+async function getFinalizedBlockNumber(api) {
+  const hash = await api.rpc.chain.getFinalizedHead();
+  const header = await api.rpc.chain.getHeader(hash);
+  return header.number;
 }
 
 async function makeRandomTransaction(api, keypairs, timeout_ms)  {
