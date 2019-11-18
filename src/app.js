@@ -36,9 +36,6 @@ async function main () {
     types: PlugRuntimeTypes.default 
     });
 
-  const keyring = testingPairs.default({ type: 'sr25519'});
-
-
   // Retrieve the chain & node information information via rpc calls
   const [chain, nodeName, nodeVersion] = await Promise.all([
     api.rpc.system.chain(),
@@ -50,15 +47,24 @@ async function main () {
 
   console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
 
+  const keyring = testingPairs.default({ type: 'sr25519'});
+  const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
+
+  const request_ms = 9000;
+  const timeout_ms = 5000;
+
+  // let request_timer = setInterval(function() {
+
+  // }, request_ms);
+
+  let count_transactions = 0;
+  const max_transactions = 10;
 
   while (true){
-    const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
-    let delay_ms = 10000;
-
-    [sender, receiver] = selectSendReceiveKeypairs(keypairs);
+    [sender, receiver] = selectSendReceiveKeypairs(keypairs.slice(0));
 
     let transaction_success = false;
-    // Make a transfer from Alice to BOB, waiting for inclusion
+
     const unsub = await api.tx.balances
     .transfer(receiver.address, 12345)
     .signAndSend(sender, (result) => {
@@ -77,7 +83,7 @@ async function main () {
       }
     });
 
-    await sleep(delay_ms);
+    await sleep(timeout_ms);
 
     if (transaction_success) {
       count_transactions++;
@@ -101,7 +107,7 @@ function selectSendReceiveKeypairs(keypairs){
   if (keypairs.length <= 1) {
     return [null, null];
   }
-  
+
   const sender_index = Math.floor(Math.random() * keypairs.length);
   sender = keypairs.splice(sender_index,1)[0];
   
@@ -114,7 +120,7 @@ if (require.main === module) {
   main()
     .then(result => process.exit(result))
     .catch(fail => { 
-    console.error(fail[1]); 
+    console.error(fail);
     process.exit(fail[0]);
   });
 } else {
