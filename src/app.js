@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 // Required imports
 const { ApiPromise, WsProvider } = require('@polkadot/api');
-const { stringToU8a, u8aToHex } = require('@polkadot/util');
 const PlugRuntimeTypes = require('@plugnet/plug-sdk-types');
 const testingPairs = require('@polkadot/keyring/testingPairs');
 //const ArgumentParser = require('argparse')
@@ -51,27 +50,41 @@ async function main () {
   const keyring = testingPairs.default({ type: 'sr25519'});
   const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
 
-  const request_ms = 9000;
-  const timeout_ms = 5000;
+  const poll_period_ms = 100;
+  const request_ms = 4000;
+  const timeout_ms = Math.min(request_ms, 5000);
 
   const number_of_blocks = 10;
 
+  let start_transaction = false;
+  let interval = setInterval(function() {
+    start_transaction = true;
+  }, request_ms);
+
   while (true){
+    if (start_transaction) {
+      start_transaction = false;
+      
+      const transaction_hash = await makeRandomTransaction(api, keypairs, timeout_ms);
 
-    const transaction_hash = await makeRandomTransaction(api, keypairs, timeout_ms);
-    if (transaction_hash != null) {
-      const header = await api.rpc.chain.getHeader(transaction_hash);
-      console.log(`Transaction included at block ${header.number} with blockHash ${transaction_hash}`);
-    } else {
-      throw [APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"]
-    }   
-    
-    const block_delta = await getFinalizedBlockNumber(api) - start_block_number;
-
-    console.log(`At block: ${block_delta} of ${number_of_blocks}`)
-    
-    if (block_delta >= number_of_blocks) {
-      return APP_SUCCESS;
+      if (transaction_hash != null) {
+        const header = await api.rpc.chain.getHeader(transaction_hash);
+        console.log(`Transaction included at block ${header.number} with blockHash ${transaction_hash}`);
+      } else {
+        throw [APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"]
+      }   
+      
+      const block_delta = await getFinalizedBlockNumber(api) - start_block_number;
+  
+      console.log(`At block: ${block_delta} of ${number_of_blocks}`)
+      
+      if (block_delta >= number_of_blocks) {
+        clearInterval(interval);
+        return APP_SUCCESS;
+      }
+    }
+    else {
+      await sleep(poll_period_ms);
     }
   }
 }
@@ -105,10 +118,11 @@ async function makeRandomTransaction(api, keypairs, timeout_ms)  {
     }
   });
   
-  setTimeout(() => timed_out = true, timeout_ms);
+  const timer = setTimeout(() => timed_out = true, timeout_ms);
   
   while(timed_out == false) {
     if (hash != null) {
+      clearTimeout(timer);
       break;
     }
     await sleep(sleep_ms);
