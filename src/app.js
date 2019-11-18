@@ -43,8 +43,6 @@ async function main () {
     api.rpc.system.version(),
   ]);
 
-  //console.log(api.query)
-
   console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
 
   const keyring = testingPairs.default({ type: 'sr25519'});
@@ -57,13 +55,31 @@ async function main () {
 
   // }, request_ms);
 
-  let count_transactions = 0;
-  const max_transactions = 10;
+  const number_of_blocks = 10;
 
   while (true){
-    [sender, receiver] = selectSendReceiveKeypairs(keypairs.slice(0));
 
-    let transaction_success = false;
+    const transaction_hash = await makeRandomTransaction(api, keypairs, timeout_ms);
+    if (transaction_hash != null) {
+      const header = await api.rpc.chain.getHeader(transaction_hash);
+      console.log(`Transaction included at block ${header.number} with blockHash ${transaction_hash}`);
+    } else {
+      throw [APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"]
+    }   
+
+    const hash = await api.rpc.chain.getFinalizedHead();
+    const header = await api.rpc.chain.getHeader(hash);
+    
+    if (header.number >= number_of_blocks) {
+      return APP_SUCCESS;
+    }
+  }
+}
+
+async function makeRandomTransaction(api, keypairs, timeout_ms)  {
+  [sender, receiver] = selectSendReceiveKeypairs(keypairs.slice(0));
+
+    let hash = null;
 
     const unsub = await api.tx.balances
     .transfer(receiver.address, 12345)
@@ -72,8 +88,7 @@ async function main () {
 
       if (result.isCompleted) {
         if (result.isFinalized) {
-          transaction_success = true;
-          console.log(`Transaction included at blockHash ${result.status.asFinalized}`);
+          hash = result.status.asFinalized;
         }
         else { // error
           throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction failed ${result.status}`];
@@ -85,16 +100,7 @@ async function main () {
 
     await sleep(timeout_ms);
 
-    if (transaction_success) {
-      count_transactions++;
-      if (count_transactions > max_transactions) {
-        return APP_SUCCESS;
-      }
-    }
-    else if (transaction_success == false){
-      throw [APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"]
-    }   
-  }
+    return hash;
 }
 
 
