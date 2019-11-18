@@ -78,29 +78,37 @@ async function main () {
 
 async function makeRandomTransaction(api, keypairs, timeout_ms)  {
   [sender, receiver] = selectSendReceiveKeypairs(keypairs.slice(0));
-
-    let hash = null;
-
-    const unsub = await api.tx.balances
-    .transfer(receiver.address, 12345)
-    .signAndSend(sender, (result) => {
-      console.log(`Current status is ${result.status}`);
-
-      if (result.isCompleted) {
-        if (result.isFinalized) {
-          hash = result.status.asFinalized;
-        }
-        else { // error
-          throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction failed ${result.status}`];
-        }
-        
-        unsub();
+  const sleep_ms = 100;
+  let timed_out = false;
+  let hash = null;
+  
+  const unsub = await api.tx.balances
+  .transfer(receiver.address, 12345)
+  .signAndSend(sender, (result) => {
+    console.log(`Current status is ${result.status}`);
+    
+    if (result.isCompleted) {
+      if (result.isFinalized) {
+        hash = result.status.asFinalized;
       }
-    });
+      else { // error
+        throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction failed ${result.status}`];
+      }
+      
+      unsub();
+    }
+  });
+  
+  setTimeout(() => timed_out = true, timeout_ms);
+  
+  while(timed_out == false) {
+    if (hash != null) {
+      break;
+    }
+    await sleep(sleep_ms);
+  }
 
-    await sleep(timeout_ms);
-
-    return hash;
+  return hash;
 }
 
 
