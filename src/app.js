@@ -12,8 +12,6 @@ const APP_FAIL_TRANSACTION_REJECTED = 1;
 const APP_FAIL_TRANSACTION_TIMEOUT = 2;
 
 async function main () {
-  
-
   let addr = 'ws://127.0.0.1:9944'
   if (process.argv.length > 2) {
       addr = "ws://"+process.argv[2];
@@ -42,7 +40,6 @@ async function main () {
     api.rpc.system.version(),
   ]);
 
-
   console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
 
   const start_block_number = await getFinalizedBlockNumber(api)
@@ -51,39 +48,58 @@ async function main () {
   const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
 
   const poll_period_ms = 100;
-  const request_ms = 4000;
-  const timeout_ms = Math.min(request_ms, 5000);
+  const request_period_ms = 5000;
+  const timeout_ms = 5000;
 
-  const number_of_blocks = 10;
+  const number_of_blocks = 2;
 
   let start_transaction = false;
   let interval = setInterval(function() {
     start_transaction = true;
-  }, request_ms);
+  }, request_period_ms);
+
+  let app_complete = false;
+  let app_error = null;
 
   while (true){
     if (start_transaction) {
       start_transaction = false;
       
-      const transaction_hash = await makeRandomTransaction(api, keypairs, timeout_ms);
+      let thrown_error = null;
+      var transaction = new Promise(async function(resolve, reject){
+        const transaction_hash = await makeRandomTransaction(api, keypairs, timeout_ms)
+          .catch(err => thrown_error = err);
 
-      if (transaction_hash != null) {
-        const header = await api.rpc.chain.getHeader(transaction_hash);
-        console.log(`Transaction included at block ${header.number} with blockHash ${transaction_hash}`);
-      } else {
-        throw [APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"]
-      }   
+        if (thrown_error != null) {
+          reject(thrown_error);
+        } else if (transaction_hash == null) {
+          reject([APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"])
+        } else {
+          const header = await api.rpc.chain.getHeader(transaction_hash);
+          console.log(`Transaction included on block ${header.number} with blockHash ${transaction_hash}`);
+          resolve()
+        } 
+      });
+
+      transaction.then(
+        async function() {
+          const block_delta = await getFinalizedBlockNumber(api) - start_block_number;
       
-      const block_delta = await getFinalizedBlockNumber(api) - start_block_number;
-  
-      console.log(`At block: ${block_delta} of ${number_of_blocks}`)
-      
-      if (block_delta >= number_of_blocks) {
-        clearInterval(interval);
-        return APP_SUCCESS;
-      }
-    }
-    else {
+          console.log(`At block: ${block_delta} of ${number_of_blocks}`)
+          
+          if (block_delta >= number_of_blocks) {
+            clearInterval(interval);
+            app_complete = true;
+          }    
+        },
+        (err) => app_error = err
+      );
+        
+    } else if (app_complete) {
+      return APP_SUCCESS;
+    } else if (app_error != null) {
+      throw app_error;
+    } else {
       await sleep(poll_period_ms);
     }
   }
@@ -97,26 +113,27 @@ async function getFinalizedBlockNumber(api) {
 
 async function makeRandomTransaction(api, keypairs, timeout_ms)  {
   [sender, receiver] = selectSendReceiveKeypairs(keypairs.slice(0));
-  const sleep_ms = 100;
+  const sleep_ms = 50;
   let timed_out = false;
+  let transaction_error = null;
   let hash = null;
   
-  const unsub = await api.tx.balances
-  .transfer(receiver.address, 12345)
-  .signAndSend(sender, (result) => {
-    console.log(`Current status is ${result.status}`);
+  const unsub = await api.tx.balances.transfer(receiver.address, 12345)
+    .signAndSend(sender, (result) => {
+      console.log(`Current status is ${result.status}`);
     
-    if (result.isCompleted) {
-      if (result.isFinalized) {
-        hash = result.status.asFinalized;
+      if (result.isCompleted) {
+        if (result.isFinalized) {
+          hash = result.status.asFinalized;
+        }
+        else { // error
+          console.log("Transaction Rejected");
+          throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction rejected ${result.status}`];
+        }
+        unsub();
       }
-      else { // error
-        throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction failed ${result.status}`];
-      }
-      
-      unsub();
-    }
-  });
+    })
+    .catch(err => transaction_error = err);
   
   const timer = setTimeout(() => timed_out = true, timeout_ms);
   
@@ -125,13 +142,14 @@ async function makeRandomTransaction(api, keypairs, timeout_ms)  {
       clearTimeout(timer);
       break;
     }
+    if (transaction_error != null) {
+      throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction rejected`];
+    }
     await sleep(sleep_ms);
   }
 
   return hash;
 }
-
-
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -154,7 +172,7 @@ if (require.main === module) {
   main()
     .then(result => process.exit(result))
     .catch(fail => { 
-    console.error(fail);
+    console.error(`Error:`, fail);
     process.exit(fail[0]);
   });
 } else {
@@ -163,3 +181,4 @@ if (require.main === module) {
     selectSendReceiveKeypairs: selectSendReceiveKeypairs
   }
 }
+
