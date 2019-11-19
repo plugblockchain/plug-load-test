@@ -9,6 +9,7 @@ services:
     command:
       - node
       - src/app.js
+      - --address
       - node-1
   node-1:
     image: plugnet/plugblockchain:1.0.0-rc1

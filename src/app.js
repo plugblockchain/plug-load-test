@@ -14,11 +14,11 @@ const APP_FAIL_TRANSACTION_TIMEOUT = 2;
 async function main (settings) {
   const poll_period_ms = 10;
   const request_period_ms = settings.transaction.period_ms;
-  const timeout_ms = settins.transaction.timeout_ms;
+  const timeout_ms = settings.transaction.timeout_ms;
+  const required_block_delta = settings.exit.block_delta;
 
-  console.log(`Connecting to ${settings.address}`);
-  
   // Initialise the provider to connect to the local node
+  console.log(`Connecting to ${settings.address}`);
   const provider = new WsProvider(settings.address);
 
   // Create the API and wait until ready
@@ -40,8 +40,6 @@ async function main (settings) {
 
   const keyring = testingPairs.default({ type: 'sr25519'});
   const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
-
-  const number_of_blocks = 10;
 
   let start_transaction = false;
   let interval = setInterval(function() {
@@ -75,9 +73,9 @@ async function main (settings) {
         async function() {
           const block_delta = await getFinalizedBlockNumber(api) - start_block_number;
       
-          console.log(`At block: ${block_delta} of ${number_of_blocks}`)
+          console.log(`At block: ${block_delta} of ${required_block_delta}`)
           
-          if (block_delta >= number_of_blocks) {
+          if (block_delta >= required_block_delta) {
             clearInterval(interval);
             app_complete = true;
           }    
@@ -171,7 +169,7 @@ function parseCliArguments() {
   const default_port = 9944;
   const default_timeout_ms = 5000;
   const default_period_ms = 5000;
-  const default_block_height = 10000;
+  const default_block_delta = 10000;
 
 
   let parser = ArgParse.ArgumentParser()
@@ -209,10 +207,10 @@ function parseCliArguments() {
     ['--blocks'],
     {
       help: 'The change in block height required to conclude testing.',
-      defaultValue: default_block_height,
+      defaultValue: default_block_delta,
       metavar: 'height',
       nargs: '1',
-      dest: 'block_height'
+      dest: 'block_delta'
     }
   );
 
@@ -226,7 +224,7 @@ function parseCliArguments() {
 
   args.timeout_ms = forceInt(args.timeout_ms, default_timeout_ms);
   args.period_ms = forceInt(args.period_ms, default_period_ms);
-  args.block_height = forceInt(args.block_height, default_block_height);
+  args.block_delta = forceInt(args.block_delta, default_block_delta);
 
   let settings = {
     address: `ws://${args.address[0]}:${args.address[1]}`,
@@ -235,7 +233,7 @@ function parseCliArguments() {
       period_ms: args.period_ms
     },
     exit: {
-      block_height: args.block_height
+      block_delta: args.block_delta
     }
   }
   return settings;

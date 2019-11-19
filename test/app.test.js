@@ -69,22 +69,22 @@ describe('Command Line Interface - Transaction Params', function() {
 });
 
 describe('Command Line Interface - Block Exit Condition', function() {
-  it('Default Block Size', function() {
+  it('Default block delta', function() {
     process.argv = ['node','app.test.js'];
     result = app.parseCliArguments();
-    assert.equal(result.exit.block_height, 10000);
+    assert.equal(result.exit.block_delta, 10000);
   });
   
-  it('Set block height', function() {
+  it('Set block delta', function() {
     process.argv = 'node app.test.js --blocks 1234'.split(' ');
     result = app.parseCliArguments();
-    assert.equal(result.exit.block_height, 1234);
+    assert.equal(result.exit.block_delta, 1234);
   });
     
-  it('Set bad block height', function() {
+  it('Set bad block delta', function() {
     process.argv = 'node app.test.js --blocks five'.split(' ');
     result = app.parseCliArguments();
-    assert.equal(result.exit.block_height, 10000);
+    assert.equal(result.exit.block_delta, 10000);
   });
 });
 
