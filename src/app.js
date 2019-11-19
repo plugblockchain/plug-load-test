@@ -5,8 +5,8 @@
 const { ApiPromise, WsProvider } = require('@polkadot/api');
 const PlugRuntimeTypes = require('@plugnet/plug-sdk-types');
 const testingPairs = require('@polkadot/keyring/testingPairs');
-const ArgParse = require('argparse');
 const cli = require('../src/cli.js');
+const selector = require('../src/selector.js');
 
 const APP_SUCCESS = 0;
 const APP_FAIL_TRANSACTION_REJECTED = 1;
@@ -40,7 +40,7 @@ async function main (settings) {
   const start_block_number = await getFinalizedBlockNumber(api)
 
   const keyring = testingPairs.default({ type: 'sr25519'});
-  const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
+  const keypair_selector = new selector.KeypairSelector([keyring.alice, keyring.bob, keyring.charlie]);
 
   let start_transaction = false;
   let interval = setInterval(function() {
@@ -50,13 +50,16 @@ async function main (settings) {
   let app_complete = false;
   let app_error = null;
 
+
+
   while (true){
     if (start_transaction) {
       start_transaction = false;
       
       let thrown_error = null;
       var transaction = new Promise(async function(resolve, reject){
-        const transaction_hash = await makeRandomTransaction(api, keypairs, timeout_ms)
+        const [sender, receiver] = keypair_selector.next();
+        const transaction_hash = await makeTransaction(api, sender, receiver, timeout_ms)
           .catch(err => thrown_error = err);
 
         if (thrown_error != null) {
@@ -100,15 +103,16 @@ async function getFinalizedBlockNumber(api) {
   return header.number;
 }
 
-async function makeRandomTransaction(api, keypairs, timeout_ms)  {
-  [sender, receiver] = selectSendReceiveKeypairs(keypairs.slice(0));
+async function makeTransaction(api, sender, receiver, timeout_ms)  {
   const sleep_ms = 50;
   let timed_out = false;
   let transaction_error = null;
   let hash = null;
+  let nonce = await api.query.system.accountNonce(sender.address);
+  console.log(sender.meta.name, "=>", receiver.meta.name,": Nonce -", nonce.words);
   
   const unsub = await api.tx.balances.transfer(receiver.address, 12345)
-    .signAndSend(sender, (result) => {
+    .signAndSend(sender, {nonce: nonce}, (result) => {
       console.log(`Current status is ${result.status}`);
     
       if (result.isCompleted) {
@@ -144,19 +148,6 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function selectSendReceiveKeypairs(keypairs){
-  if (keypairs.length <= 1) {
-    return [null, null];
-  }
-
-  const sender_index = Math.floor(Math.random() * keypairs.length);
-  sender = keypairs.splice(sender_index,1)[0];
-  
-  receiver = keypairs[Math.floor(Math.random() * keypairs.length)];
-  
-  return [sender, receiver];
-}
-
 if (require.main === module) {
   settings = cli.parseCliArguments()
   
@@ -169,7 +160,8 @@ if (require.main === module) {
 } else {
   // Export modules for testing
   module.exports = {
-    selectSendReceiveKeypairs: selectSendReceiveKeypairs
   }
 }
+
+
 
