@@ -68,6 +68,26 @@ describe('Command Line Interface - Transaction Params', function() {
   });
 });
 
+describe('Command Line Interface - Block Exit Condition', function() {
+  it('Default Block Size', function() {
+    process.argv = ['node','app.test.js'];
+    result = app.parseCliArguments();
+    assert.equal(result.exit.block_height, 10000);
+  });
+  
+  it('Set block height', function() {
+    process.argv = 'node app.test.js --blocks 1234'.split(' ');
+    result = app.parseCliArguments();
+    assert.equal(result.exit.block_height, 1234);
+  });
+    
+  it('Set bad block height', function() {
+    process.argv = 'node app.test.js --blocks five'.split(' ');
+    result = app.parseCliArguments();
+    assert.equal(result.exit.block_height, 10000);
+  });
+});
+
 describe('Send_and_receive_keypair_selection', function() {
   it('Random_testing', function() {
     // probability of randomness resulting in missing a failure = (1 - (4/5)^25) = 0.3%

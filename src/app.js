@@ -12,8 +12,12 @@ const APP_FAIL_TRANSACTION_REJECTED = 1;
 const APP_FAIL_TRANSACTION_TIMEOUT = 2;
 
 async function main (settings) {
-  console.log(`Connecting to ${settings.address}`);
+  const poll_period_ms = 10;
+  const request_period_ms = settings.transaction.period_ms;
+  const timeout_ms = settins.transaction.timeout_ms;
 
+  console.log(`Connecting to ${settings.address}`);
+  
   // Initialise the provider to connect to the local node
   const provider = new WsProvider(settings.address);
 
@@ -36,10 +40,6 @@ async function main (settings) {
 
   const keyring = testingPairs.default({ type: 'sr25519'});
   const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
-
-  const poll_period_ms = 10;
-  const request_period_ms = 4000;
-  const timeout_ms = 5000;
 
   const number_of_blocks = 10;
 
@@ -171,6 +171,7 @@ function parseCliArguments() {
   const default_port = 9944;
   const default_timeout_ms = 5000;
   const default_period_ms = 5000;
+  const default_block_height = 10000;
 
 
   let parser = ArgParse.ArgumentParser()
@@ -204,6 +205,16 @@ function parseCliArguments() {
       dest: 'period_ms'
     }
   );
+  parser.addArgument(
+    ['--blocks'],
+    {
+      help: 'The change in block height required to conclude testing.',
+      defaultValue: default_block_height,
+      metavar: 'height',
+      nargs: '1',
+      dest: 'block_height'
+    }
+  );
 
   let args = parser.parseArgs()
   if (args.address.length == 1) {
@@ -215,12 +226,16 @@ function parseCliArguments() {
 
   args.timeout_ms = forceInt(args.timeout_ms, default_timeout_ms);
   args.period_ms = forceInt(args.period_ms, default_period_ms);
+  args.block_height = forceInt(args.block_height, default_block_height);
 
   let settings = {
     address: `ws://${args.address[0]}:${args.address[1]}`,
     transaction: {
       timeout_ms: args.timeout_ms,
       period_ms: args.period_ms
+    },
+    exit: {
+      block_height: args.block_height
     }
   }
   return settings;
