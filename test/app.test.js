@@ -1,8 +1,41 @@
 'user strict';
 const assert = require('assert');
 const app = require('../src/app.js');
+const ArgParse = require('argparse')
 
-
+describe('Command Line Interface - IP Address', function() {
+  it('Default Address', function() {
+    process.argv = ['node','app.test.js'];
+    result = app.parseCliArguments();
+    assert.equal(result.address, "ws://127.0.0.1:9944");
+  });
+  
+  it('New Address', function() {
+    process.argv = 'node app.test.js -a 0.0.0.0 1234'.split(' ');
+    result = app.parseCliArguments();
+    assert.equal(result.address, "ws://0.0.0.0:1234");
+  });
+  
+  it('Change ip address only', function() {
+    process.argv = 'node app.test.js -a 0.0.0.0'.split(' ');
+    result = app.parseCliArguments();
+    assert.equal(result.address, "ws://0.0.0.0:9944");
+  });
+  
+  it('IP address can be a string', function() {
+    process.argv = 'node app.test.js -a node 1234'.split(' ');
+    result = app.parseCliArguments();
+    assert.equal(result.address, "ws://node:1234");
+  });
+  
+  it('Port must be a number', function() {
+    process.argv = 'node app.test.js -a 0.0.0.0 five'.split(' ');
+    result = app.parseCliArguments();
+    assert.equal(result.address, "ws://0.0.0.0:9944");
+  });
+  
+  
+});
 
 describe('Send_and_receive_keypair_selection', function() {
   it('Random_testing', function() {

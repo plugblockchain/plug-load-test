@@ -5,27 +5,17 @@
 const { ApiPromise, WsProvider } = require('@polkadot/api');
 const PlugRuntimeTypes = require('@plugnet/plug-sdk-types');
 const testingPairs = require('@polkadot/keyring/testingPairs');
-//const ArgumentParser = require('argparse')
+const ArgParse = require('argparse')
 
 const APP_SUCCESS = 0;
 const APP_FAIL_TRANSACTION_REJECTED = 1;
 const APP_FAIL_TRANSACTION_TIMEOUT = 2;
 
-async function main () {
-  let addr = 'ws://127.0.0.1:9944'
-  if (process.argv.length > 2) {
-      addr = "ws://"+process.argv[2];
-      if (process.argv.length > 3) {
-          addr += ":" + process.argv[3];
-      }
-      else {
-          addr += ":9944"
-      }
-  }
-  console.log(`Connecting to ${addr}`);
+async function main (settings) {
+  console.log(`Connecting to ${settings.address}`);
 
   // Initialise the provider to connect to the local node
-  const provider = new WsProvider(addr);
+  const provider = new WsProvider(settings.address);
 
   // Create the API and wait until ready
   const api = await ApiPromise.create({ 
@@ -47,11 +37,11 @@ async function main () {
   const keyring = testingPairs.default({ type: 'sr25519'});
   const keypairs = [keyring.alice, keyring.bob, keyring.charlie];
 
-  const poll_period_ms = 100;
-  const request_period_ms = 5000;
+  const poll_period_ms = 10;
+  const request_period_ms = 4000;
   const timeout_ms = 5000;
 
-  const number_of_blocks = 2;
+  const number_of_blocks = 10;
 
   let start_transaction = false;
   let interval = setInterval(function() {
@@ -168,8 +158,41 @@ function selectSendReceiveKeypairs(keypairs){
   return [sender, receiver];
 }
 
+function parseCliArguments() {
+  let parser = ArgParse.ArgumentParser()
+  parser.addArgument(
+    ['-a'],
+    {
+      help: 'IP address of the node for sending transactions',
+      defaultValue: ['127.0.0.1', 9944],
+      metavar: ['ip-addr', 'port-num'],
+      nargs: '+',
+      dest: 'address'
+    }
+  );
+
+
+  let args = parser.parseArgs()
+  if (args.address.length == 1) {
+    args.address.push(9944);
+  }
+  else if (args.address.length >= 2) {
+    args.address[1] = parseInt(args.address[1], 10);
+    if (isNaN(args.address[1])) {
+      args.address[1] = 9944;
+    }
+  }
+
+  let settings = {
+    address: `ws://${args.address[0]}:${args.address[1]}`
+  }
+  return settings;
+}
+
 if (require.main === module) {
-  main()
+  settings = parseCliArguments()
+  
+  main(settings)
     .then(result => process.exit(result))
     .catch(fail => { 
     console.error(`Error:`, fail);
@@ -178,7 +201,8 @@ if (require.main === module) {
 } else {
   // Export modules for testing
   module.exports = {
-    selectSendReceiveKeypairs: selectSendReceiveKeypairs
+    selectSendReceiveKeypairs: selectSendReceiveKeypairs,
+    parseCliArguments: parseCliArguments
   }
 }
 
