@@ -7,6 +7,7 @@ const PlugRuntimeTypes = require('@plugnet/plug-sdk-types');
 const testingPairs = require('@polkadot/keyring/testingPairs');
 const cli = require('../src/cli.js');
 const selector = require('../src/selector.js');
+require('console-stamp')(console, '[HH:MM:ss.l]');
 
 const APP_SUCCESS = 0;
 const APP_FAIL_TRANSACTION_REJECTED = 1;
@@ -42,9 +43,9 @@ async function main (settings) {
   const keyring = testingPairs.default({ type: 'sr25519'});
   const keypair_selector = new selector.KeypairSelector([keyring.alice, keyring.bob, keyring.charlie]);
 
-  let start_transaction = false;
+  let pending_transaction = 0;
   let interval = setInterval(function() {
-    start_transaction = true;
+    pending_transaction++;
   }, request_period_ms);
 
   let app_complete = false;
@@ -53,10 +54,11 @@ async function main (settings) {
 
 
   while (true){
-    if (start_transaction) {
-      start_transaction = false;
+    if (pending_transaction > 0) {
+      pending_transaction--;
       
       let thrown_error = null;
+
       var transaction = new Promise(async function(resolve, reject){
         const [sender, receiver] = keypair_selector.next();
         const transaction_hash = await makeTransaction(api, sender, receiver, timeout_ms)
