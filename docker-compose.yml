@@ -6,11 +6,7 @@ services:
       - ./src:/usr/src/app/src
     environment:
       - NODE_ENV=development
-    command:
-      - node
-      - src/app.js
-      - --address
-      - node-1
+    command: node src/app.js --address node-1 --period 1000 --start-delay 10000
   node-1:
     image: plugnet/plugblockchain:1.0.0-rc1
     container_name: node-1

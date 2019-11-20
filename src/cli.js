@@ -15,6 +15,7 @@ function parseCliArguments() {
   const default_timeout_ms = 5000;
   const default_period_ms = 5000;
   const default_block_delta = 10000;
+  const default_startup_delay_ms = 0;
 
 
   let parser = ArgParse.ArgumentParser()
@@ -58,6 +59,16 @@ function parseCliArguments() {
       dest: 'block_delta'
     }
   );
+  parser.addArgument(
+    ['--start-delay'],
+    {
+      help: 'Start-up delay in ms.',
+      defaultValue: default_startup_delay_ms,
+      metavar: 'ms',
+      nargs: '1',
+      dest: 'startup_delay_ms'
+    }
+  );
 
   let args = parser.parseArgs()
   if (args.address.length == 1) {
@@ -70,9 +81,11 @@ function parseCliArguments() {
   args.timeout_ms = forceInt(args.timeout_ms, default_timeout_ms);
   args.period_ms = forceInt(args.period_ms, default_period_ms);
   args.block_delta = forceInt(args.block_delta, default_block_delta);
+  args.startup_delay_ms = forceInt(args.startup_delay_ms, default_startup_delay_ms);
 
   let settings = {
     address: `ws://${args.address[0]}:${args.address[1]}`,
+    startup_delay_ms: args.startup_delay_ms,
     transaction: {
       timeout_ms: args.timeout_ms,
       period_ms: args.period_ms
