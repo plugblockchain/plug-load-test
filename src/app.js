@@ -42,9 +42,12 @@ async function main (settings) {
   ]);
   
   console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
-  
+
+
+  // The test ends when the final block number = start + delta
   const start_block_number = await getFinalizedBlockNumber(api)
   
+  // Gather all required users
   const keyring = testingPairs.default({ type: 'sr25519'});
 
   const required_users = 2*timeout_ms/request_period_ms;
@@ -53,19 +56,27 @@ async function main (settings) {
   const steves = createTheSteves(required_steves);
   await fundTheSteves(steves, api, keyring.alice, timeout_ms);
   
-  const keypair_selector = new selector.KeypairSelector([keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve].concat(steves));
+  const keypair_selector = new selector.KeypairSelector(
+    [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve]
+    .concat(steves)
+    );
   
+  // SetInterval is used to ensure precise transaction rates
   let pending_transaction = 0;
   let interval = setInterval(function() {
     pending_transaction++;
   }, request_period_ms);
   
+  // These varaibles allow asynchronous functions to recommend script termination
   let app_complete = false;
   let app_error = null;
+
+  // How many funds to transfer in a transaction - a little bit arbitrary
   const funds = 5;
   
-  
+  // Loop exits once app_complete or app_error change
   while (true){
+    // triggers a new transaction if needed
     if (pending_transaction > 0) {
       pending_transaction--;
       
@@ -89,6 +100,7 @@ async function main (settings) {
       
       transaction.then(
         async function() {
+          // Check if we have completed the test
           const block_delta = await getFinalizedBlockNumber(api) - start_block_number;
           
           console.log(`At block: ${block_delta} of ${required_block_delta}`)
@@ -122,6 +134,7 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
   let timed_out = false;
   let transaction_error = null;
   let hash = null;
+  // Verbose transaction information -- could be removed in the future
   let nonce = await api.query.system.accountNonce(sender.address);
   let sender_balance = await api.query.balances.freeBalance(sender.address);
   let receiver_balance = await api.query.balances.freeBalance(receiver.address);
@@ -130,7 +143,8 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
     `${receiver.meta.name} [${receiver_balance}]`,
     `: Nonce - ${nonce.words}`
     );
-  
+
+  // Sign and send a balance transfer
   const unsub = await api.tx.balances.transfer(receiver.address, funds)
   .signAndSend(sender, {nonce: nonce}, (result) => {
     console.log(`Current status is ${result.status}`);
@@ -150,6 +164,9 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
   
   const timer = setTimeout(() => timed_out = true, timeout_ms);
   
+  // periodically checks whether we have timed out
+  // avoided sleeping here so that we can report a successful transation at the time
+  // it occurs.
   while(timed_out == false) {
     if (hash != null) {
       clearTimeout(timer);
@@ -164,7 +181,7 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
   return hash;
 }
 
-
+/// Generates a number of steve keypairs
 function createTheSteves(number) {
   console.log(`Steve Factory Initializing - Creating [${number}] Steves.`)
   const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
@@ -180,6 +197,8 @@ function createTheSteves(number) {
   return steves;
 }
 
+/// Funds an array of Steve keypairs an adequate amount from a funder keypair
+/// The Steves are funded enough that they should now be registered on the chain
 async function fundTheSteves(steves, api, alice, timeout_ms) {
   console.log(`Steve Factory - Funding All Steves.`)
   let steve;
