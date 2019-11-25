@@ -7,6 +7,7 @@ services:
     environment:
       - NODE_ENV=development
     command: node src/app.js --address node-1 --period 1000 --start-delay 10000
+  # Node config taken from https://github.com/plugblockchain/plug-blockchain/blob/1.0.0-rc1/docker-compose.yml
   node-1:
     image: plugnet/plugblockchain:1.0.0-rc1
     container_name: node-1
