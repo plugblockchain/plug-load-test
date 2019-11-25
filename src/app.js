@@ -51,9 +51,10 @@ async function main (settings) {
   const keyring = testingPairs.default({ type: 'sr25519'});
 
   const required_users = 2*timeout_ms/request_period_ms;
-  const required_steves = Math.max(1, Math.floor(required_users-6))
+  const required_steves = Math.max(1, Math.floor(required_users-6));
 
-  const steves = createTheSteves(required_steves);
+  const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
+  const steves = createTheSteves(required_steves, steve_keyring);
   await fundTheSteves(steves, api, keyring.alice, timeout_ms);
   
   const keypair_selector = new selector.KeypairSelector(
@@ -182,9 +183,8 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
 }
 
 /// Generates a number of steve keypairs
-function createTheSteves(number) {
+function createTheSteves(number, steve_keyring) {
   console.log(`Steve Factory Initializing - Creating [${number}] Steves.`)
-  const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
   const steves = [];
   for (i=0;i<number; i++) {
     name = "Steve_0x" + (i).toString(16)

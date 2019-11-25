@@ -50,7 +50,7 @@ function parseCliArguments() {
     }
   );
   parser.addArgument(
-    ['--target-block'],s
+    ['--target-block'],
     {
       help: 'The change in block height required to conclude testing.',
       defaultValue: default_block_delta,

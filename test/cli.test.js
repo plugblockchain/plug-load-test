@@ -74,13 +74,13 @@ describe('Command Line Interface - Block Exit Condition', function() {
   });
   
   it('Set block delta', function() {
-    process.argv = 'node cli.test.js --blocks 1234'.split(' ');
+    process.argv = 'node cli.test.js --target-block 1234'.split(' ');
     result = cli.parseCliArguments();
     assert.equal(result.exit.block_delta, 1234);
   });
     
   it('Set bad block delta', function() {
-    process.argv = 'node cli.test.js --blocks five'.split(' ');
+    process.argv = 'node cli.test.js --target-block five'.split(' ');
     result = cli.parseCliArguments();
     assert.equal(result.exit.block_delta, 10000);
   });
