@@ -32,7 +32,7 @@ function parseCliArguments() {
   parser.addArgument(
     ['--timeout'],
     {
-      help: 'Transaction timeout in ms',
+      help: 'Transaction timeout in ms, any transaction exceeding this limit fails the test.',
       defaultValue: default_timeout_ms,
       metavar: 'ms',
       nargs: '1',
@@ -42,7 +42,7 @@ function parseCliArguments() {
   parser.addArgument(
     ['--period'],
     {
-      help: 'Time between transactions in ms',
+      help: 'Time between transaction calls in ms',
       defaultValue: default_period_ms,
       metavar: 'ms',
       nargs: '1',
@@ -50,7 +50,7 @@ function parseCliArguments() {
     }
   );
   parser.addArgument(
-    ['--blocks'],
+    ['--target-block'],s
     {
       help: 'The change in block height required to conclude testing.',
       defaultValue: default_block_delta,
@@ -71,6 +71,8 @@ function parseCliArguments() {
   );
 
   let args = parser.parseArgs()
+
+  // Fill in any blanks for the address config
   if (args.address.length == 1) {
     args.address.push(default_port);
   }
@@ -78,11 +80,13 @@ function parseCliArguments() {
     args.address[1] = forceInt(args.address[1], default_port);
   }
 
+  // Force all integers to be integers
   args.timeout_ms = forceInt(args.timeout_ms, default_timeout_ms);
   args.period_ms = forceInt(args.period_ms, default_period_ms);
   args.block_delta = forceInt(args.block_delta, default_block_delta);
   args.startup_delay_ms = forceInt(args.startup_delay_ms, default_startup_delay_ms);
 
+  // Return a settings object
   let settings = {
     address: `ws://${args.address[0]}:${args.address[1]}`,
     startup_delay_ms: args.startup_delay_ms,
