@@ -14,13 +14,13 @@ const APP_SUCCESS = 0;
 const APP_FAIL_TRANSACTION_REJECTED = 1;
 const APP_FAIL_TRANSACTION_TIMEOUT = 2;
 
-
 async function main (settings) {
-  const poll_period_ms = 10;
-  const request_period_ms = settings.transaction.period_ms;
-  const timeout_ms = settings.transaction.timeout_ms;
-  const required_block_delta = settings.exit.block_delta;
+  const config = await setup(settings);
+  const result = await run(config);
+  return result; 
+}
 
+async function setup(settings) {
   // Command line delay used to wait for nodes to come up
   await sleep(settings.startup_delay_ms);  
 
@@ -43,38 +43,53 @@ async function main (settings) {
   
   console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
 
-
   // The test ends when the final block number = start + delta
   const start_block_number = await getFinalizedBlockNumber(api)
   
   // Gather all required users
   const keyring = testingPairs.default({ type: 'sr25519'});
 
-  const required_users = 2*timeout_ms/request_period_ms;
+  const required_users = 2*settings.transaction.timeout_ms/settings.transaction.period_ms;
   const required_steves = Math.max(1, Math.floor(required_users-6));
 
   const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
   const steves = createTheSteves(required_steves, steve_keyring);
-  await fundTheSteves(steves, api, keyring.alice, timeout_ms);
+  await fundTheSteves(steves, api, keyring.alice, settings.transaction.timeout_ms);
   
   const keypair_selector = new selector.KeypairSelector(
     [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve]
     .concat(steves)
     );
+
+  const funds = 5;
+
+  const config = {
+    api: api,
+    funds: funds,
+    timeout_ms: settings.transaction.timeout_ms,
+    request_period_ms: settings.transaction.period_ms,
+    keypair_selector: keypair_selector,
+    start_block_number: start_block_number,
+    required_block_delta: settings.exit.block_delta,
+  }
+
+  return config;
+}
+
+async function run(config) {
   
   // SetInterval is used to ensure precise transaction rates
   let pending_transaction = 0;
   let interval = setInterval(function() {
     pending_transaction++;
-  }, request_period_ms);
+  }, config.request_period_ms);
   
   // These varaibles allow asynchronous functions to recommend script termination
   let app_complete = false;
   let app_error = null;
 
-  // How many funds to transfer in a transaction - a little bit arbitrary
-  const funds = 5;
-  
+  const poll_period_ms = 10;
+
   // Loop exits once app_complete or app_error change
   while (true){
     // triggers a new transaction if needed
@@ -84,8 +99,8 @@ async function main (settings) {
       let thrown_error = null;
       
       var transaction = new Promise(async function(resolve, reject){
-        const [sender, receiver] = keypair_selector.next();
-        const transaction_hash = await makeTransaction(api, sender, receiver, funds, timeout_ms)
+        const [sender, receiver] = config.keypair_selector.next();
+        const transaction_hash = await makeTransaction(config.api, sender, receiver, config.funds, config.timeout_ms)
         .catch(err => thrown_error = err);
         
         if (thrown_error != null) {
@@ -93,7 +108,7 @@ async function main (settings) {
         } else if (transaction_hash == null) {
           reject([APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"])
         } else {
-          const header = await api.rpc.chain.getHeader(transaction_hash);
+          const header = await config.api.rpc.chain.getHeader(transaction_hash);
           console.log(`Transaction included on block ${header.number} with blockHash ${transaction_hash}`);
           resolve()
         } 
@@ -102,11 +117,11 @@ async function main (settings) {
       transaction.then(
         async function() {
           // Check if we have completed the test
-          const block_delta = await getFinalizedBlockNumber(api) - start_block_number;
+          const block_delta = await getFinalizedBlockNumber(config.api) - config.start_block_number;
           
-          console.log(`At block: ${block_delta} of ${required_block_delta}`)
+          console.log(`At block: ${block_delta} of ${config.required_block_delta}`)
           
-          if (block_delta >= required_block_delta) {
+          if (block_delta >= config.required_block_delta) {
             clearInterval(interval);
             app_complete = true;
           }    
@@ -208,11 +223,10 @@ async function fundTheSteves(steves, api, alice, timeout_ms) {
   }
 }
 
-
-
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
 
 if (require.main === module) {
   settings = cli.parseCliArguments();
