@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 // Required imports
 const { ApiPromise, WsProvider } = require('@polkadot/api');
-const PlugRuntimeTypes = require('@plugnet/plug-sdk-types');
+const PlugRuntimeTypes = require('@plugnet/plug-api-types');
 const Keyring = require('@polkadot/keyring');
 const testingPairs = require('@polkadot/keyring/testingPairs');
 const cli = require('../src/cli.js');
