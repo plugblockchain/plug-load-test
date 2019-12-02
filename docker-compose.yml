@@ -9,11 +9,10 @@ services:
     command: node src/app.js --address node-1 --period 1000 --start-delay 10000
   # Node config taken from https://github.com/plugblockchain/plug-blockchain/blob/1.0.0-rc1/docker-compose.yml
   node-1:
-    image: plugnet/plugblockchain:1.0.0-rc1
+    image: cennznet/cennznet:0.9.25-beta-dba02695
     container_name: node-1
     volumes: ["./data/node-1:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
       - --base-path=/mnt/node
       - --chain=dev
       - --alice
@@ -30,11 +29,10 @@ services:
       - "30333:30333"
       - "8080:8000"
   node-2:
-    image: plugnet/plugblockchain:1.0.0-rc1
+    image: cennznet/cennznet:0.9.25-beta-dba02695
     container_name: node-2
     volumes: ["./data/node-2:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
       - --base-path=/mnt/node
       - --chain=dev
       - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
@@ -44,11 +42,10 @@ services:
       - --rpc-cors=all
 
   node-3:
-    image: plugnet/plugblockchain:1.0.0-rc1
+    image: cennznet/cennznet:0.9.25-beta-dba02695
     container_name: node-3
     volumes: ["./data/node-3:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
       - --base-path=/mnt/node
       - --chain=dev
       - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
@@ -58,11 +55,10 @@ services:
       - --rpc-cors=all
     
   node-4:
-    image: plugnet/plugblockchain:1.0.0-rc1
+    image: cennznet/cennznet:0.9.25-beta-dba02695
     container_name: node-4
     volumes: ["./data/node-4:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
       - --base-path=/mnt/node
       - --chain=dev
       - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
@@ -72,11 +68,10 @@ services:
       - --rpc-cors=all
 
   node-5:
-    image: plugnet/plugblockchain:1.0.0-rc1
+    image: cennznet/cennznet:0.9.25-beta-dba02695
     container_name: node-5
     volumes: ["./data/node-5:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
       - --base-path=/mnt/node
       - --chain=dev
       - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
