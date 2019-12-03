@@ -51,7 +51,12 @@ async function setup(settings) {
 
   const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
   const steves = createTheSteves(required_steves, steve_keyring);
-  await fundTheSteves(steves, api, keyring.alice, settings.transaction.timeout_ms);
+  await fundTheSteves(
+    steves, 
+    api, 
+    [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve], 
+    settings.transaction.timeout_ms
+    );
   
   const keypair_selector = new selector.KeypairSelector(
     [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve]
@@ -129,7 +134,9 @@ async function run(config) {
     } else if (app_complete) {
       return APP_SUCCESS;
     } else if (app_error != null) {
-      throw app_error;
+      console.log(app_error);
+      app_error = null
+      await sleep(poll_period_ms);
     } else {
       await sleep(poll_period_ms);
     }
@@ -149,8 +156,8 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
   let hash = null;
   // Verbose transaction information -- could be removed in the future
   let nonce = await api.query.system.accountNonce(sender.address);
-  let sender_balance = await api.query.genericAsset.freeBalance(16000, sender.address);
-  let receiver_balance = await api.query.genericAsset.freeBalance(16000, receiver.address);
+  let sender_balance = await api.query.genericAsset.freeBalance(16001, sender.address);
+  let receiver_balance = await api.query.genericAsset.freeBalance(16001, receiver.address);
   console.log(
     `${sender.meta.name} [${sender_balance}] =>`, 
     `${receiver.meta.name} [${receiver_balance}]`,
@@ -158,7 +165,7 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
     );
 
   // Sign and send a balance transfer
-  const unsub = await api.tx.genericAsset.transfer(16000, receiver.address, funds)
+  const unsub = await api.tx.genericAsset.transfer(16001, receiver.address, funds)
   .signAndSend(sender, {nonce: nonce}, (result) => {
     console.log(`Current status is ${result.status}`);
     
@@ -211,12 +218,31 @@ function createTheSteves(number, steve_keyring) {
 
 /// Funds an array of Steve keypairs an adequate amount from a funder keypair
 /// The Steves are funded enough that they should now be registered on the chain
-async function fundTheSteves(steves, api, alice, timeout_ms) {
+async function fundTheSteves(steves, api, alice_and_friends, timeout_ms) {
   console.log(`Steve Factory - Funding All Steves.`)
+  let len = alice_and_friends.length
+  let busy = new Array(len).fill(false)
+  let index = 0
   let steve;
   for (steve of steves) {
-    await makeTransaction(api, alice, steve, '100_000_000_000_000', timeout_ms)
-    .catch( (err) => {throw err;});
+    let donor_index = index
+    let donor = alice_and_friends[donor_index]
+    
+    index += 1
+    if (index >= len) {
+      index = 0
+    }
+    
+    while (busy[donor_index]) {
+      await sleep(10)
+    }
+    busy[donor_index] = true
+    let p = new Promise(async function(resolve, reject) {
+      await makeTransaction(api, donor, steve, '100_000_000_000_000', timeout_ms)
+      .catch( (err) => {throw err;});
+      resolve(true);
+    })
+    p.then((_) => busy[donor_index] = false )
   }
 }
 
@@ -240,6 +266,8 @@ if (require.main === module) {
     createTheSteves,
   }
 }
+
+
 
 
 

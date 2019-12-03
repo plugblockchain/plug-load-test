@@ -1,81 +1,242 @@
 version: '3'
 services: 
-  load:
-    build: .
-    volumes:
-      - ./src:/usr/src/app/src
-    environment:
-      - NODE_ENV=development
-    command: node src/app.js --address node-1 --period 1000 --start-delay 10000
-  # Node config taken from https://github.com/plugblockchain/plug-blockchain/blob/1.0.0-rc1/docker-compose.yml
-  node-1:
+  boot-node-1:
     image: cennznet/cennznet:0.9.25-beta-dba02695
-    container_name: node-1
-    volumes: ["./data/node-1:/mnt/node"]
+    container_name: boot-node-1
+    volumes: ["./data/boot-node-1:/mnt/node"]
     command:
       - --base-path=/mnt/node
       - --chain=dev
-      - --alice
+      - --validator
+      - --ws-external
+      - --ws-port=9944 
+      - --rpc-external
+      - --rpc-cors=all
+      - --bootnodes=/dns4/boot-node-3/tcp/30333/p2p/QmdoyqhDeYScKjNKZTK9Ru3KugwXxiUBaS2k9CESDbn3Be
+      # Some arbitrary static bytes to set the libp2p public key
+      - --node-key=D0FE7E415AA9BAD7605A6841E74C2E0BA72DA1367BBA28AA37DC044669D09858
+    
+    
+  boot-node-2:
+    image: cennznet/cennznet:0.9.25-beta-dba02695
+    container_name: boot-node-2
+    volumes: ["./data/boot-node-2:/mnt/node"]
+    command:
+      - --base-path=/mnt/node
+      - --chain=dev
+      - --validator
+      - --ws-external
+      - --ws-port=9944 
+      - --rpc-external
+      - --rpc-cors=all
+      - --bootnodes=/dns4/boot-node-3/tcp/30333/p2p/QmdoyqhDeYScKjNKZTK9Ru3KugwXxiUBaS2k9CESDbn3Be
+      # Some arbitrary static bytes to set the libp2p public key
+      - --node-key=D0FE7E415AA9BAD7605A6841E74C2E0BA72DA1367BBA28AA37DC044669D09859
+    ports:
+      - "9933:9933"
+      - "9944:9944"
+      - "30333:30333"
+      - "8080:8000"
+
+  boot-node-3:
+    image: cennznet/cennznet:0.9.25-beta-dba02695
+    container_name: boot-node-3
+    volumes: ["./data/boot-node-3:/mnt/node"]
+    command:
+      - --base-path=/mnt/node
+      - --chain=dev
       - --validator
       - --ws-external
       - --ws-port=9944 
       - --rpc-external
       - --rpc-cors=all
       # Some arbitrary static bytes to set the libp2p public key
-      - --node-key=D0FE7E415AA9BAD7605A6841E74C2E0BA72DA1367BBA28AA37DC044669D09858
-    ports:
-      - "9933:9933"
-      - "9944:9944"
-      - "30333:30333"
-      - "8080:8000"
-  node-2:
+      - --node-key=D0FE7E415AA9BAD7605A6841E74C2E0BA72DA1367BBA28AA37DC044669D09860
+  
+  validator-node-1:
     image: cennznet/cennznet:0.9.25-beta-dba02695
-    container_name: node-2
-    volumes: ["./data/node-2:/mnt/node"]
+    container_name: validator-node-1
+    volumes: ["./data/validator-node-1:/mnt/node"]
     command:
       - --base-path=/mnt/node
       - --chain=dev
-      - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
       - --bob
       - --validator
       - --ws-external
       - --rpc-cors=all
-
-  node-3:
+  
+  validator-node-2:
     image: cennznet/cennznet:0.9.25-beta-dba02695
-    container_name: node-3
-    volumes: ["./data/node-3:/mnt/node"]
+    container_name: validator-node-2
+    volumes: ["./data/validator-node-2:/mnt/node"]
     command:
       - --base-path=/mnt/node
       - --chain=dev
-      - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --bootnodes=/dns4/boot-node-2/tcp/30333/p2p/QmXocYwPfnfBr7NHmM6FssrD7gG7yRRouu2ESAizbBAKtW
+      - --alice
+      - --validator
+      - --ws-external
+      - --rpc-cors=all
+
+  validator-node-3:
+    image: cennznet/cennznet:0.9.25-beta-dba02695
+    container_name: validator-node-3
+    volumes: ["./data/validator-node-3:/mnt/node"]
+    command:
+      - --base-path=/mnt/node
+      - --chain=dev
+      - --bootnodes=/dns4/boot-node-3/tcp/30333/p2p/QmdoyqhDeYScKjNKZTK9Ru3KugwXxiUBaS2k9CESDbn3Be
       - --charlie
       - --validator
       - --ws-external
       - --rpc-cors=all
     
-  node-4:
+  validator-node-4:
     image: cennznet/cennznet:0.9.25-beta-dba02695
-    container_name: node-4
-    volumes: ["./data/node-4:/mnt/node"]
+    container_name: validator-node-4
+    volumes: ["./data/validator-node-4:/mnt/node"]
     command:
       - --base-path=/mnt/node
       - --chain=dev
-      - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmXocYwPfnfBr7NHmM6FssrD7gG7yRRouu2ESAizbBAKtW,/dns4/boot-node-2/tcp/30333/p2p/QmXocYwPfnfBr7NHmM6FssrD7gG7yRRouu2ESAizbBAKtW,/dns4/boot-node-3/tcp/30333/p2p/QmdoyqhDeYScKjNKZTK9Ru3KugwXxiUBaS2k9CESDbn3Be
       - --dave
       - --validator
       - --ws-external
       - --rpc-cors=all
 
-  node-5:
+  validator-node-5:
     image: cennznet/cennznet:0.9.25-beta-dba02695
-    container_name: node-5
-    volumes: ["./data/node-5:/mnt/node"]
+    container_name: validator-node-5
+    volumes: ["./data/validator-node-5:/mnt/node"]
     command:
       - --base-path=/mnt/node
       - --chain=dev
-      - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
       - --eve
       - --validator
       - --ws-external
       - --rpc-cors=all
+
+  full-node-1:
+    image: cennznet/cennznet:0.9.25-beta-dba02695
+    container_name: full-node-1
+    volumes: ["./data/full-node-1:/mnt/node"]
+    command:
+      - --base-path=/mnt/node
+      - --chain=dev
+      - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --ws-external
+      - --rpc-cors=all
+
+  full-node-2:
+    image: cennznet/cennznet:0.9.25-beta-dba02695
+    container_name: full-node-2
+    volumes: ["./data/full-node-2:/mnt/node"]
+    command:
+      - --base-path=/mnt/node
+      - --chain=dev
+      - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --ws-external
+      - --rpc-cors=all
+
+  full-node-1:
+    image: cennznet/cennznet:0.9.25-beta-dba02695
+    container_name: full-node-1
+    volumes: ["./data/full-node-1:/mnt/node"]
+    command:
+      - --base-path=/mnt/node
+      - --chain=dev
+      - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --ws-external
+      - --rpc-cors=all
+
+  full-node-3:
+    image: cennznet/cennznet:0.9.25-beta-dba02695
+    container_name: full-node-3
+    volumes: ["./data/full-node-3:/mnt/node"]
+    command:
+      - --base-path=/mnt/node
+      - --chain=dev
+      - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --ws-external
+      - --rpc-cors=all
+
+  # full-node-4:
+  #   image: cennznet/cennznet:0.9.25-beta-dba02695
+  #   container_name: full-node-4
+  #   volumes: ["./data/full-node-4:/mnt/node"]
+  #   command:
+  #     - --base-path=/mnt/node
+  #     - --chain=dev
+  #     - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+  #     - --ws-external
+  #     - --rpc-cors=all
+
+  # full-node-5:
+  #   image: cennznet/cennznet:0.9.25-beta-dba02695
+  #   container_name: full-node-5
+  #   volumes: ["./data/full-node-5:/mnt/node"]
+  #   command:
+  #     - --base-path=/mnt/node
+  #     - --chain=dev
+  #     - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+  #     - --ws-external
+  #     - --rpc-cors=all
+
+  # full-node-6:
+  #   image: cennznet/cennznet:0.9.25-beta-dba02695
+  #   container_name: full-node-6
+  #   volumes: ["./data/full-node-6:/mnt/node"]
+  #   command:
+  #     - --base-path=/mnt/node
+  #     - --chain=dev
+  #     - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+  #     - --ws-external
+  #     - --rpc-cors=all
+
+  # full-node-7:
+  #   image: cennznet/cennznet:0.9.25-beta-dba02695
+  #   container_name: full-node-7
+  #   volumes: ["./data/full-node-7:/mnt/node"]
+  #   command:
+  #     - --base-path=/mnt/node
+  #     - --chain=dev
+  #     - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+  #     - --ws-external
+  #     - --rpc-cors=all
+
+  # full-node-8:
+  #   image: cennznet/cennznet:0.9.25-beta-dba02695
+  #   container_name: full-node-8
+  #   volumes: ["./data/full-node-8:/mnt/node"]
+  #   command:
+  #     - --base-path=/mnt/node
+  #     - --chain=dev
+  #     - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+  #     - --ws-external
+  #     - --rpc-cors=all
+
+  # full-node-9:
+  #   image: cennznet/cennznet:0.9.25-beta-dba02695
+  #   container_name: full-node-9
+  #   volumes: ["./data/full-node-9:/mnt/node"]
+  #   command:
+  #     - --base-path=/mnt/node
+  #     - --chain=dev
+  #     - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+  #     - --ws-external
+  #     - --rpc-cors=all
+
+  # full-node-10:
+  #   image: cennznet/cennznet:0.9.25-beta-dba02695
+  #   container_name: full-node-10
+  #   volumes: ["./data/full-node-10:/mnt/node"]
+  #   command:
+  #     - --base-path=/mnt/node
+  #     - --chain=dev
+  #     - --bootnodes=/dns4/boot-node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+  #     - --ws-external
+  #     - --rpc-cors=all
+
+  
