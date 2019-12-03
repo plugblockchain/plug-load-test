@@ -2,10 +2,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-var-requires */
 // Required imports
-const { ApiPromise, WsProvider } = require('@polkadot/api');
-const PlugRuntimeTypes = require('@plugnet/plug-api-types');
-const Keyring = require('@polkadot/keyring');
-const testingPairs = require('@polkadot/keyring/testingPairs');
+const { Api } = require('@cennznet/api');
+const Keyring = require('@plugnet/keyring');
+const testingPairs = require('@plugnet/keyring/testingPairs');
 const cli = require('../src/cli.js');
 const selector = require('../src/selector.js');
 require('console-stamp')(console, 'HH:MM:ss.l');
@@ -26,12 +25,10 @@ async function setup(settings) {
 
   // Initialise the provider to connect to the local node
   console.log(`Connecting to ${settings.address}`);
-  const provider = new WsProvider(settings.address);
   
   // Create the API and wait until ready
-  const api = await ApiPromise.create({ 
-    provider,
-    types: PlugRuntimeTypes.default 
+  const api = await Api.create({ 
+    provider: settings.address
   });
   
   // Retrieve the chain & node information information via rpc calls
@@ -152,8 +149,8 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
   let hash = null;
   // Verbose transaction information -- could be removed in the future
   let nonce = await api.query.system.accountNonce(sender.address);
-  let sender_balance = await api.query.balances.freeBalance(sender.address);
-  let receiver_balance = await api.query.balances.freeBalance(receiver.address);
+  let sender_balance = await api.query.genericAsset.freeBalance(16000, sender.address);
+  let receiver_balance = await api.query.genericAsset.freeBalance(16000, receiver.address);
   console.log(
     `${sender.meta.name} [${sender_balance}] =>`, 
     `${receiver.meta.name} [${receiver_balance}]`,
@@ -161,7 +158,7 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
     );
 
   // Sign and send a balance transfer
-  const unsub = await api.tx.balances.transfer(receiver.address, funds)
+  const unsub = await api.tx.genericAsset.transfer(16000, receiver.address, funds)
   .signAndSend(sender, {nonce: nonce}, (result) => {
     console.log(`Current status is ${result.status}`);
     
