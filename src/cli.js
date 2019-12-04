@@ -69,6 +69,16 @@ function parseCliArguments() {
       dest: 'startup_delay_ms'
     }
   );
+  parser.addArgument(
+    ['--fund'],
+    {
+      help: 'Whether to fund the Steves',
+      defaultValue: false,
+      action: 'storeTrue',
+      nargs: '0',
+      dest: 'fund'
+    }
+  );
 
   let args = parser.parseArgs()
 
@@ -96,7 +106,8 @@ function parseCliArguments() {
     },
     exit: {
       block_delta: args.block_delta
-    }
+    },
+    fund: args.fund
   }
   return settings;
 }

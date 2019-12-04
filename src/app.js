@@ -51,18 +51,20 @@ async function setup(settings) {
 
   const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
   const steves = createTheSteves(required_steves, steve_keyring);
-  await fundTheSteves(
-    steves, 
-    api, 
-    [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve], 
-    settings.transaction.timeout_ms
-    );
-  
-  const keypair_selector = new selector.KeypairSelector(
-    [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve]
-    .concat(steves)
-    );
-
+  if (settings.fund) {
+    await fundTheSteves(
+      steves, 
+      api, 
+      [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve], 
+      settings.transaction.timeout_ms
+      );
+  }
+      
+      const keypair_selector = new selector.KeypairSelector(
+        [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve]
+        .concat(steves)
+        );
+        
   const funds = 5;
 
   const config = {
@@ -236,6 +238,7 @@ async function fundTheSteves(steves, api, alice_and_friends, timeout_ms) {
     while (busy[donor_index]) {
       await sleep(10)
     }
+    await sleep(100)
     busy[donor_index] = true
     let p = new Promise(async function(resolve, reject) {
       await makeTransaction(api, donor, steve, '100_000_000_000_000', timeout_ms)
