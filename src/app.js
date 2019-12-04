@@ -54,10 +54,18 @@ async function setup(settings) {
 
   const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
   const steves = createTheSteves(required_steves, steve_keyring);
-  await fundTheSteves(steves, api, keyring.alice, settings.transaction.timeout_ms);
+
+  if (settings.fund) {	
+    await fundTheSteves(	
+      steves, 	
+      api, 	
+      [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve], 	
+      settings.transaction.timeout_ms	
+      );	
+  }
   
   const keypair_selector = new selector.KeypairSelector(
-    [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve]
+    [keyring.ferdie]
     .concat(steves)
     );
 
@@ -131,9 +139,11 @@ async function run(config) {
         
     } else if (app_complete) {
       return APP_SUCCESS;
-    } else if (app_error != null) {
-      throw app_error;
-    } else {
+    } else if (app_error != null) {	
+      console.log(app_error);	
+      app_error = null	
+      await sleep(poll_period_ms);	
+    }  else {
       await sleep(poll_period_ms);
     }
   }
@@ -212,15 +222,35 @@ function createTheSteves(number, steve_keyring) {
   return steves;
 }
 
-/// Funds an array of Steve keypairs an adequate amount from a funder keypair
-/// The Steves are funded enough that they should now be registered on the chain
-async function fundTheSteves(steves, api, alice, timeout_ms) {
-  console.log(`Steve Factory - Funding All Steves.`)
-  let steve;
-  for (steve of steves) {
-    await makeTransaction(api, alice, steve, '100_000_000_000_000', timeout_ms)
-    .catch( (err) => {throw err;});
-  }
+	/// Funds an array of Steve keypairs an adequate amount from a funder keypair	
+/// The Steves are funded enough that they should now be registered on the chain	
+async function fundTheSteves(steves, api, alice_and_friends, timeout_ms) {	
+  console.log(`Steve Factory - Funding All Steves.`)	
+  let len = alice_and_friends.length	
+  let busy = new Array(len).fill(false)	
+  let index = 0	
+  let steve;	
+  for (steve of steves) {	
+    let donor_index = index	
+    let donor = alice_and_friends[donor_index]	
+    	
+    index += 1	
+    if (index >= len) {	
+      index = 0	
+    }	
+    	
+    while (busy[donor_index]) {	
+      await sleep(10)	
+    }	
+    await sleep(100)	
+    busy[donor_index] = true	
+    let p = new Promise(async function(resolve, reject) {	
+      await makeTransaction(api, donor, steve, '100_000_000_000_000', timeout_ms)	
+      .catch( (err) => {throw err;});	
+      resolve(true);	
+    })	
+    p.then((_) => busy[donor_index] = false )	
+  }	
 }
 
 function sleep(ms) {
