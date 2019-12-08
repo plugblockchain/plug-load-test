@@ -79,6 +79,16 @@ function parseCliArguments() {
       dest: 'fund'
     }
   );
+  parser.addArgument(
+    ['--verbose'],
+    {
+      help: 'Run in verbose mode',
+      defaultValue: false,
+      action: 'storeTrue',
+      nargs: '0',
+      dest: 'verbose'
+    }
+  );
 
   let args = parser.parseArgs()
 
@@ -107,14 +117,15 @@ function parseCliArguments() {
     exit: {
       block_delta: args.block_delta
     },
-    fund: args.fund
+    fund: args.fund,
+    verbose: args.verbose
   }
   return settings;
 }
 
 if (require.main === module) {
   settings = parseCliArguments()
-  
+
   console.log(settings)
 } else {
   // Export modules for testing
