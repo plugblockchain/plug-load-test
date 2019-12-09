@@ -4,6 +4,7 @@
     "@plugnet/plug-api-types": "git+https://github.com/plugblockchain/plug-api-types.git#1.0.0-rc1",
     "@polkadot/api": "0.96.1",
     "argparse": "1.0.10",
+    "console-log-level": "^1.4.1",
     "console-stamp": "^0.2.9",
     "mocha": "^6.2.2"
   },
