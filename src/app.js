@@ -29,7 +29,7 @@ async function setup(settings) {
   // Initialise the provider to connect to the local node
   const apis = [];
   for (let i = 0; i < settings.address.length; i++) {
-    console.info(`Connecting to ${settings.address[i]}`);
+    log.info(`Connecting to ${settings.address[i]}`);
     const provider = new WsProvider(settings.address[i]);
 
     // Create the API and wait until ready
@@ -55,7 +55,7 @@ async function setup(settings) {
   const keyring = testingPairs.default({ type: 'sr25519'});
 
   const required_users = 2 * settings.transaction.timeout_ms / settings.transaction.period_ms;
-  const required_steves = Math.max(1, Math.floor(required_users - 6));
+  const required_steves = Math.max(2, Math.ceil(required_users));
 
   const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
   const steves = createTheSteves(required_steves, steve_keyring);
