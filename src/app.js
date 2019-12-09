@@ -120,9 +120,9 @@ async function run(config) {
           .catch(err => thrown_error = err);
 
         if (thrown_error != null) {
-          reject(thrown_error, addr);
+          reject([thrown_error, addr]);
         } else if (transaction_hash == null) {
-          reject([APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"], addr);
+          reject([[APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"], addr]);
         } else {
           const header = await api.rpc.chain.getHeader(transaction_hash);
           log.info(`[${addr}] Transaction included on block ${header.number} with blockHash ${transaction_hash}`);
@@ -142,9 +142,9 @@ async function run(config) {
             app_complete = true;
           }
         },
-        (err, addr) => {
-          app_error = err;
-          log.error(`[${addr}] ${app_error}`);
+        (err) => {
+          app_error = err[0];
+          log.error(`[${err[1]}] ${app_error}`);
         }
       );
 
