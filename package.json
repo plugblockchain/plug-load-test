@@ -9,6 +9,7 @@
     "mocha": "^6.2.2"
   },
   "scripts": {
-    "test": "mocha --reporter nyan"
+    "test": "mocha --reporter nyan",
+    "pumba": "docker exec pumba pumba netem --tc-image gaiadocker/iproute2 --duration 2m loss -p 50 re2:validator-node-*"
   }
 }
