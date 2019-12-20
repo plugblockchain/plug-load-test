@@ -94,7 +94,7 @@ services:
       # Some arbitrary static bytes to set the libp2p public key
       - --node-key=D0FE7E415AA9BAD7605A6841E74C2E0BA72DA1367BBA28AA37DC044669D09860
     ports:
-      - " :9944"
+      - "9945:9944"
     networks:
       block-network:
         ipv4_address: 10.5.0.4
