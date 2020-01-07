@@ -2,7 +2,7 @@ version: '3'
 services:
   pumba:
     container_name: pumba
-    image: alpine-pumba-docker #image can be built with pumba/Dockerfile
+    image: alpine-pumba #image can be built with pumba/Dockerfile: docker build -t alpine-pumba .
     user: "root"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -11,7 +11,7 @@ services:
         ipv4_address: 10.6.0.20
       block-network:
         ipv4_address: 10.5.0.20        
-
+  
   tx-node-1:
     container_name: tx-node-1
     image: "node:8"
@@ -27,7 +27,8 @@ services:
       - |
         npm install
         node /home/node/app/src/app.js --fund \
-        --period 100 \
+        --start-delay 20000 \
+        --period 200 \
         --address 10.5.0.2 10.6.0.04 10.6.0.03 10.5.0.5 10.5.0.6 10.5.0.7 \
         --log-level trace
     networks:
@@ -94,7 +95,7 @@ services:
       # Some arbitrary static bytes to set the libp2p public key
       - --node-key=D0FE7E415AA9BAD7605A6841E74C2E0BA72DA1367BBA28AA37DC044669D09860
     ports:
-      - " :9944"
+      - "9945:9944"
     networks:
       block-network:
         ipv4_address: 10.5.0.4
@@ -143,7 +144,7 @@ services:
       - --base-path=/mnt/node
       - --chain=dev
       - --bootnodes=/dns4/boot-node-3/tcp/30333/p2p/QmdoyqhDeYScKjNKZTK9Ru3KugwXxiUBaS2k9CESDbn3Be
-      - --alice
+      - --charlie
       - --validator
       - --ws-external
       - --rpc-cors=all

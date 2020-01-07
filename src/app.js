@@ -9,6 +9,7 @@ const cli = require('../src/cli.js');
 const selector = require('../src/selector.js');
 require('console-stamp')(console, 'HH:MM:ss.l');
 let log = require('console-log-level')({ level: 'info' });
+let createStashAccounts = require('../src/stakingSetup')
 
 const APP_SUCCESS = 0;
 const APP_FAIL_TRANSACTION_REJECTED = 1;
@@ -99,6 +100,8 @@ async function run(config) {
   let api_idx = 0;
 
   const poll_period_ms = 10;
+
+  await createStashAccounts.createStashAccounts(config.apis[api_idx]);
 
   // Loop exits once app_complete or app_error change
   while (true){
@@ -270,7 +273,6 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-
 if (require.main === module) {
   settings = cli.parseCliArguments();
   log = require('console-log-level')({ level: settings.log_level });
@@ -287,8 +289,3 @@ if (require.main === module) {
     createTheSteves,
   }
 }
-
-
-
-
-

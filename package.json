@@ -10,6 +10,6 @@
   },
   "scripts": {
     "test": "mocha --reporter nyan",
-    "pumba": "docker exec pumba pumba netem --tc-image gaiadocker/iproute2 --duration 2m loss -p 50 re2:validator-node-*"
+    "pumba": "docker exec pumba pumba netem --tc-image gaiadocker/iproute2 --duration 2m loss -p 60 re2:validator-node-*"
   }
 }
