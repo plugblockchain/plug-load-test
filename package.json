@@ -3,6 +3,7 @@
     "@cennznet/api": "^0.20.7",
     "@plugnet/keyring": "=1.1.100",
     "@plugnet/plug-api-types": "git+https://github.com/plugblockchain/plug-api-types.git#1.0.0-rc1",
+    "@polkadot/keyring": "^1.7.1",
     "argparse": "1.0.10",
     "console-log-level": "^1.4.1",
     "console-stamp": "^0.2.9",
