@@ -16,33 +16,33 @@ const APP_FAIL_TRANSACTION_TIMEOUT = 2;
 async function main (settings) {
   const config = await setup(settings);
   const result = await run(config);
-  return result; 
+  return result;
 }
 
 async function setup(settings) {
   // Command line delay used to wait for nodes to come up
-  await sleep(settings.startup_delay_ms);  
+  await sleep(settings.startup_delay_ms);
 
   // Initialise the provider to connect to the local node
   console.log(`Connecting to ${settings.address}`);
-  
+
   // Create the API and wait until ready
-  const api = await Api.create({ 
+  const api = await Api.create({
     provider: settings.address
   });
-  
+
   // Retrieve the chain & node information information via rpc calls
   const [chain, nodeName, nodeVersion] = await Promise.all([
     api.rpc.system.chain(),
     api.rpc.system.name(),
     api.rpc.system.version(),
   ]);
-  
+
   console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
 
   // The test ends when the final block number = start + delta
   const start_block_number = await getFinalizedBlockNumber(api)
-  
+
   // Gather all required users
   const keyring = testingPairs.default({ type: 'sr25519'});
 
@@ -53,18 +53,20 @@ async function setup(settings) {
   const steves = createTheSteves(required_steves, steve_keyring);
   if (settings.fund) {
     await fundTheSteves(
-      steves, 
-      api, 
-      [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve], 
+      steves,
+      api,
+      [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve],
       settings.transaction.timeout_ms
       );
   }
-      
+
       const keypair_selector = new selector.KeypairSelector(
-        [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve]
-        .concat(steves)
+        [
+          keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice,
+          keyring.bob
+        ]
         );
-        
+
   const funds = 5;
 
   const config = {
@@ -81,32 +83,42 @@ async function setup(settings) {
 }
 
 async function run(config) {
-  
+
   // SetInterval is used to ensure precise transaction rates
   let pending_transaction = 0;
   let interval = setInterval(function() {
     pending_transaction++;
   }, config.request_period_ms);
-  
+
   // These varaibles allow asynchronous functions to recommend script termination
   let app_complete = false;
   let app_error = null;
 
   const poll_period_ms = 10;
 
+  let count = 0;
+
   // Loop exits once app_complete or app_error change
   while (true){
     // triggers a new transaction if needed
     if (pending_transaction > 0) {
+      count++;
       pending_transaction--;
-      
+
+      if (count == 10000) {
+        clearInterval(interval)
+        interval = setInterval(function() {
+          pending_transaction++;
+        }, 10000);
+      }
+
       let thrown_error = null;
-      
+
       var transaction = new Promise(async function(resolve, reject){
         const [sender, receiver] = config.keypair_selector.next();
         const transaction_hash = await makeTransaction(config.api, sender, receiver, config.funds, config.timeout_ms)
         .catch(err => thrown_error = err);
-        
+
         if (thrown_error != null) {
           reject(thrown_error);
         } else if (transaction_hash == null) {
@@ -115,24 +127,24 @@ async function run(config) {
           const header = await config.api.rpc.chain.getHeader(transaction_hash);
           console.log(`Transaction included on block ${header.number} with blockHash ${transaction_hash}`);
           resolve()
-        } 
+        }
       });
-      
+
       transaction.then(
         async function() {
           // Check if we have completed the test
           const block_delta = await getFinalizedBlockNumber(config.api) - config.start_block_number;
-          
+
           console.log(`At block: ${block_delta} of ${config.required_block_delta}`)
-          
+
           if (block_delta >= config.required_block_delta) {
             clearInterval(interval);
             app_complete = true;
-          }    
+          }
         },
         (err) => app_error = err
         );
-        
+
     } else if (app_complete) {
       return APP_SUCCESS;
     } else if (app_error != null) {
@@ -150,7 +162,7 @@ async function getFinalizedBlockNumber(api) {
   const header = await api.rpc.chain.getHeader(hash);
   return header.number;
 }
-  
+
 async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
   const sleep_ms = 50;
   let timed_out = false;
@@ -158,10 +170,11 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
   let hash = null;
   // Verbose transaction information -- could be removed in the future
   let nonce = await api.query.system.accountNonce(sender.address);
+  console.log(sender.address)
   let sender_balance = await api.query.genericAsset.freeBalance(16001, sender.address);
   let receiver_balance = await api.query.genericAsset.freeBalance(16001, receiver.address);
   console.log(
-    `${sender.meta.name} [${sender_balance}] =>`, 
+    `${sender.meta.name} [${sender_balance}] =>`,
     `${receiver.meta.name} [${receiver_balance}]`,
     `: Nonce - ${nonce.words}`
     );
@@ -170,8 +183,9 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
   const unsub = await api.tx.genericAsset.transfer(16001, receiver.address, funds)
   .signAndSend(sender, {nonce: nonce}, (result) => {
     console.log(`Current status is ${result.status}`);
-    
+
     if (result.isCompleted) {
+      unsub();
       if (result.isFinalized) {
         hash = result.status.asFinalized;
       }
@@ -179,13 +193,12 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
         console.log("Transaction Rejected");
         throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction rejected ${result.status}`];
       }
-      unsub();
     }
   })
   .catch(err => transaction_error = err);
-  
+
   const timer = setTimeout(() => timed_out = true, timeout_ms);
-  
+
   // periodically checks whether we have timed out
   // avoided sleeping here so that we can report a successful transation at the time
   // it occurs.
@@ -199,7 +212,7 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
     }
     await sleep(sleep_ms);
   }
-  
+
   return hash;
 }
 
@@ -210,11 +223,11 @@ function createTheSteves(number, steve_keyring) {
   for (i=0;i<number; i++) {
     name = "Steve_0x" + (i).toString(16)
     console.log(`Steve Factory - Creating`, name);
-    
+
     let steve = steve_keyring.addFromUri(name, {name: name});
     steves.push(steve);
   }
-  
+
   return steves;
 }
 
@@ -229,12 +242,12 @@ async function fundTheSteves(steves, api, alice_and_friends, timeout_ms) {
   for (steve of steves) {
     let donor_index = index
     let donor = alice_and_friends[donor_index]
-    
+
     index += 1
     if (index >= len) {
       index = 0
     }
-    
+
     while (busy[donor_index]) {
       await sleep(10)
     }
@@ -256,10 +269,10 @@ function sleep(ms) {
 
 if (require.main === module) {
   settings = cli.parseCliArguments();
-  
+
   main(settings)
     .then(result => process.exit(result))
-    .catch(fail => { 
+    .catch(fail => {
     console.error(`Error:`, fail);
     process.exit(fail[0]);
   });
