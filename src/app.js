@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-var-requires */
 // Required imports
+const { ApiPromise, WsProvider } = require('@polkadot/api');
+const PlugRuntimeTypes = require('@plugnet/plug-api-types');
 const { Api } = require('@cennznet/api');
 const Keyring = require('@plugnet/keyring');
 const testingPairs = require('@plugnet/keyring/testingPairs');
@@ -14,21 +16,50 @@ const APP_FAIL_TRANSACTION_REJECTED = 1;
 const APP_FAIL_TRANSACTION_TIMEOUT = 2;
 
 async function main (settings) {
+  let result = APP_SUCCESS;
   const config = await setup(settings);
-  const result = await run(config);
+  while(true) {
+    try {
+      result = await run(config);
+      break;
+    }
+    catch(err) {
+      console.log(err)
+    }
+  }
   return result;
 }
 
-async function setup(settings) {
-  // Command line delay used to wait for nodes to come up
-  await sleep(settings.startup_delay_ms);
-
+async function getCennznetApi(address) {
   // Initialise the provider to connect to the local node
-  console.log(`Connecting to ${settings.address}`);
+  console.log(`Connecting to ${address}`);
 
   // Create the API and wait until ready
   const api = await Api.create({
-    provider: settings.address
+    provider: address
+  });
+
+ // Retrieve the chain & node information information via rpc calls
+ const [chain, nodeName, nodeVersion] = await Promise.all([
+   api.rpc.system.chain(),
+   api.rpc.system.name(),
+   api.rpc.system.version(),
+ ]);
+
+ console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
+
+ return api;
+}
+
+async function getPlugApi(address) {
+  // Initialise the provider to connect to the local node
+  console.log(`Connecting to ${address}`);
+  const provider = new WsProvider(address);
+
+  // Create the API and wait until ready
+  const api = await ApiPromise.create({
+    provider,
+    types: PlugRuntimeTypes.default
   });
 
   // Retrieve the chain & node information information via rpc calls
@@ -39,6 +70,39 @@ async function setup(settings) {
   ]);
 
   console.log(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`);
+
+  return api;
+}
+
+const cennznet_transaction = {
+  transfer: (api, receiver, funds) =>
+    api.tx.genericAsset.transfer(16001, receiver.address, funds),
+  balance: (api, sender_address) =>
+    api.query.genericAsset.freeBalance(16001, sender_address)
+}
+
+const plug_transaction = {
+  transfer: (api, receiver, funds) =>
+    api.tx.balances.transfer(receiver.address, funds),
+  balance: (api, sender_address) =>
+    api.query.balances.freeBalance(sender_address)
+}
+
+async function setup(settings) {
+  // Command line delay used to wait for nodes to come up
+  await sleep(settings.startup_delay_ms);
+
+  let api;
+  let transaction;
+
+  if (settings.api ===  "plug") {
+    api = await getPlugApi(settings.address);
+    transaction = plug_transaction;
+  }
+  else {
+    api = await getCennznetApi(settings.address);
+    transaction = cennznet_transaction;
+  }
 
   // The test ends when the final block number = start + delta
   const start_block_number = await getFinalizedBlockNumber(api)
@@ -55,23 +119,25 @@ async function setup(settings) {
     await fundTheSteves(
       steves,
       api,
+      transaction,
       [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve],
       settings.transaction.timeout_ms
       );
   }
 
-      const keypair_selector = new selector.KeypairSelector(
-        [
-          keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice,
-          keyring.bob
-        ]
-        );
+  const keypair_selector = new selector.KeypairSelector(
+    [
+      keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice,
+      keyring.bob
+    ]
+  );
 
   const funds = 5;
 
   const config = {
-    api: api,
-    funds: funds,
+    api,
+    funds,
+    transaction,
     timeout_ms: settings.transaction.timeout_ms,
     request_period_ms: settings.transaction.period_ms,
     keypair_selector: keypair_selector,
@@ -83,6 +149,8 @@ async function setup(settings) {
 }
 
 async function run(config) {
+
+  let tx_count = 0;
 
   // SetInterval is used to ensure precise transaction rates
   let pending_transaction = 0;
@@ -116,7 +184,7 @@ async function run(config) {
 
       var transaction = new Promise(async function(resolve, reject){
         const [sender, receiver] = config.keypair_selector.next();
-        const transaction_hash = await makeTransaction(config.api, sender, receiver, config.funds, config.timeout_ms)
+        const transaction_hash = await makeTransaction(config.api, config.transaction, sender, receiver, config.funds, config.timeout_ms, tx_count)
         .catch(err => thrown_error = err);
 
         if (thrown_error != null) {
@@ -145,6 +213,8 @@ async function run(config) {
         (err) => app_error = err
         );
 
+      tx_count++;
+
     } else if (app_complete) {
       return APP_SUCCESS;
     } else if (app_error != null) {
@@ -163,26 +233,35 @@ async function getFinalizedBlockNumber(api) {
   return header.number;
 }
 
-async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
+function id_to_string(id) {
+  const zeropads = 4;
+  const id_string = ("0".repeat(zeropads) + id.toString(16)).substr(-zeropads);
+  return `<TX ${id_string}>     `;
+}
+
+async function makeTransaction(api, transaction, sender, receiver, funds, timeout_ms, tx_id)  {
   const sleep_ms = 50;
+  const id_string = id_to_string(tx_id);
   let timed_out = false;
   let transaction_error = null;
   let hash = null;
   // Verbose transaction information -- could be removed in the future
   let nonce = await api.query.system.accountNonce(sender.address);
-  console.log(sender.address)
-  let sender_balance = await api.query.genericAsset.freeBalance(16001, sender.address);
-  let receiver_balance = await api.query.genericAsset.freeBalance(16001, receiver.address);
+  let sender_balance = await transaction.balance(api, sender.address);
+  let receiver_balance = await transaction.balance(api, receiver.address);
   console.log(
+    id_string +
     `${sender.meta.name} [${sender_balance}] =>`,
     `${receiver.meta.name} [${receiver_balance}]`,
     `: Nonce - ${nonce.words}`
     );
 
+  // if (chain == CHAIN_CENNZNET)
+
   // Sign and send a balance transfer
-  const unsub = await api.tx.genericAsset.transfer(16001, receiver.address, funds)
+  const unsub = await transaction.transfer(api, receiver.address, funds)
   .signAndSend(sender, {nonce: nonce}, (result) => {
-    console.log(`Current status is ${result.status}`);
+    console.log(id_string + `Current status is ${result.status}`);
 
     if (result.isCompleted) {
       unsub();
@@ -190,8 +269,8 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
         hash = result.status.asFinalized;
       }
       else { // error
-        console.log("Transaction Rejected");
-        throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction rejected ${result.status}`];
+        console.log(id_string + "Transaction Rejected");
+        throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected ${result.status}`];
       }
     }
   })
@@ -208,7 +287,7 @@ async function makeTransaction(api, sender, receiver, funds, timeout_ms)  {
       break;
     }
     if (transaction_error != null) {
-      throw [APP_FAIL_TRANSACTION_REJECTED, `Transaction rejected`];
+      throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected`];
     }
     await sleep(sleep_ms);
   }
@@ -233,7 +312,7 @@ function createTheSteves(number, steve_keyring) {
 
 /// Funds an array of Steve keypairs an adequate amount from a funder keypair
 /// The Steves are funded enough that they should now be registered on the chain
-async function fundTheSteves(steves, api, alice_and_friends, timeout_ms) {
+async function fundTheSteves(steves, api, transaction, alice_and_friends, timeout_ms) {
   console.log(`Steve Factory - Funding All Steves.`)
   let len = alice_and_friends.length
   let busy = new Array(len).fill(false)
@@ -254,7 +333,7 @@ async function fundTheSteves(steves, api, alice_and_friends, timeout_ms) {
     await sleep(100)
     busy[donor_index] = true
     let p = new Promise(async function(resolve, reject) {
-      await makeTransaction(api, donor, steve, '100_000_000_000_000', timeout_ms)
+      await makeTransaction(api, transaction, donor, steve, '100_000_000_000_000', timeout_ms)
       .catch( (err) => {throw err;});
       resolve(true);
     })

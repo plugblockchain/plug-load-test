@@ -79,6 +79,26 @@ function parseCliArguments() {
       dest: 'fund'
     }
   );
+  parser.addArgument(
+    [`--cennznet`],
+    {
+      help: 'Run against a cennznet chain (default)',
+      defaultValue: false,
+      action: 'storeTrue',
+      nargs: '0',
+      dest: 'cennznet'
+    }
+  )
+  parser.addArgument(
+    [`--plug`],
+    {
+      help: 'Run against a plug chain',
+      defaultValue: false,
+      action: 'storeTrue',
+      nargs: '0',
+      dest: 'plug'
+    }
+  )
 
   let args = parser.parseArgs()
 
@@ -96,6 +116,11 @@ function parseCliArguments() {
   args.block_delta = forceInt(args.block_delta, default_block_delta);
   args.startup_delay_ms = forceInt(args.startup_delay_ms, default_startup_delay_ms);
 
+  let api_select = 'cennznet';
+  if (args.plug === true && args.cennznet === false) {
+    api_select = 'plug';
+  }
+
   // Return a settings object
   let settings = {
     address: `ws://${args.address[0]}:${args.address[1]}`,
@@ -107,14 +132,15 @@ function parseCliArguments() {
     exit: {
       block_delta: args.block_delta
     },
-    fund: args.fund
+    fund: args.fund,
+    api: api_select
   }
   return settings;
 }
 
 if (require.main === module) {
   settings = parseCliArguments()
-  
+
   console.log(settings)
 } else {
   // Export modules for testing
