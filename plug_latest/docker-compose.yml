@@ -1,11 +1,11 @@
 version: '3'
 services:
   node-1:
-    image: plugnet/plugblockchain:1.0.0-rc1
-    container_name: plug-node_1-0-0-RC1-1
+    image: plugnet/plugblockchain:latest
+    container_name: plug-node-latest-1
     volumes: ["./data/plug_node-1:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
+      - /usr/local/bin/plug
       - --base-path=/mnt/node
       - --chain=dev
       - --bob
@@ -22,56 +22,56 @@ services:
       - "30333:30333"
       - "8080:8000"
   node-2:
-    image: plugnet/plugblockchain:1.0.0-rc1
-    container_name: plug-node_1-0-0-RC1-2
+    image: plugnet/plugblockchain:latest
+    container_name: plug-node-latest-2
     volumes: ["./data/plug_node-2:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
+      - /usr/local/bin/plug
       - --base-path=/mnt/node
       - --chain=dev
-      - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --bootnodes=/dns4/plug-node-latest-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
       - --alice
       - --validator
       - --ws-external
       - --rpc-cors=all
 
   node-3:
-    image: plugnet/plugblockchain:1.0.0-rc1
-    container_name: plug-node_1-0-0-RC1-3
+    image: plugnet/plugblockchain:latest
+    container_name: plug-node-latest-3
     volumes: ["./data/plug_node-3:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
+      - /usr/local/bin/plug
       - --base-path=/mnt/node
       - --chain=dev
-      - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --bootnodes=/dns4/plug-node-latest-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
       - --charlie
       - --validator
       - --ws-external
       - --rpc-cors=all
 
   node-4:
-    image: plugnet/plugblockchain:1.0.0-rc1
-    container_name: plug-node_1-0-0-RC1-4
+    image: plugnet/plugblockchain:latest
+    container_name: plug-node-latest-4
     volumes: ["./data/plug_node-4:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
+      - /usr/local/bin/plug
       - --base-path=/mnt/node
       - --chain=dev
-      - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --bootnodes=/dns4/plug-node-latest-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
       - --dave
       - --validator
       - --ws-external
       - --rpc-cors=all
 
   node-5:
-    image: plugnet/plugblockchain:1.0.0-rc1
-    container_name: plug-node_1-0-0-RC1-5
+    image: plugnet/plugblockchain:latest
+    container_name: plug-node-latest-5
     volumes: ["./data/plug_node-5:/mnt/node"]
     command:
-      - /usr/local/bin/substrate
+      - /usr/local/bin/plug
       - --base-path=/mnt/node
       - --chain=dev
-      - --bootnodes=/dns4/node-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
+      - --bootnodes=/dns4/plug-node-latest-1/tcp/30333/p2p/QmQmJTi2eDg53Ws3N5XaixMmiGCmhNNJX7bPBMirnD2JEs
       - --eve
       - --validator
       - --ws-external

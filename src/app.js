@@ -2,10 +2,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-var-requires */
 // Required imports
-const { ApiPromise, WsProvider } = require('@polkadot/api');
+const { Keyring, ApiPromise, WsProvider } = require('@polkadot/api');
 const PlugRuntimeTypes = require('@plugnet/plug-api-types');
 const { Api } = require('@cennznet/api');
-const Keyring = require('@plugnet/keyring');
 const testingPairs = require('@plugnet/keyring/testingPairs');
 const cli = require('../src/cli.js');
 const selector = require('../src/selector.js');
@@ -110,20 +109,20 @@ async function setup(settings) {
   // Gather all required users
   const keyring = testingPairs.default({ type: 'sr25519'});
 
-  const required_users = 2*settings.transaction.timeout_ms/settings.transaction.period_ms;
-  const required_steves = Math.max(1, Math.floor(required_users-6));
+  // const required_users = 2*settings.transaction.timeout_ms/settings.transaction.period_ms;
+  // const required_steves = Math.max(1, Math.floor(required_users-6));
 
-  const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
-  const steves = createTheSteves(required_steves, steve_keyring);
-  if (settings.fund) {
-    await fundTheSteves(
-      steves,
-      api,
-      transaction,
-      [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve],
-      settings.transaction.timeout_ms
-      );
-  }
+  // const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
+  // const steves = createTheSteves(required_steves, steve_keyring);
+  // if (settings.fund) {
+  //   await fundTheSteves(
+  //     steves,
+  //     api,
+  //     transaction,
+  //     [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve],
+  //     settings.transaction.timeout_ms
+  //     );
+  // }
 
   const keypair_selector = new selector.KeypairSelector(
     [
@@ -132,7 +131,7 @@ async function setup(settings) {
     ]
   );
 
-  const funds = 5;
+  const funds = 5000;
 
   const config = {
     api,
@@ -218,7 +217,7 @@ async function run(config) {
     } else if (app_complete) {
       return APP_SUCCESS;
     } else if (app_error != null) {
-      console.log(app_error);
+      console.log("Error thrown:", app_error);
       app_error = null
       await sleep(poll_period_ms);
     } else {
@@ -256,11 +255,14 @@ async function makeTransaction(api, transaction, sender, receiver, funds, timeou
     `: Nonce - ${nonce.words}`
     );
 
+  const keyring = new Keyring({type: 'sr25519'});
+  const alice = keyring.addFromUri('//Alice');
+
   // if (chain == CHAIN_CENNZNET)
 
   // Sign and send a balance transfer
   const unsub = await transaction.transfer(api, receiver.address, funds)
-  .signAndSend(sender, {nonce: nonce}, (result) => {
+  .signAndSend(alice, {nonce: nonce}, (result) => {
     console.log(id_string + `Current status is ${result.status}`);
 
     if (result.isCompleted) {
@@ -270,7 +272,7 @@ async function makeTransaction(api, transaction, sender, receiver, funds, timeou
       }
       else { // error
         console.log(id_string + "Transaction Rejected");
-        throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected ${result.status}`];
+        throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected: ${result.status}`];
       }
     }
   })
@@ -287,7 +289,7 @@ async function makeTransaction(api, transaction, sender, receiver, funds, timeou
       break;
     }
     if (transaction_error != null) {
-      throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected`];
+      throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected: ${transaction_error}`];
     }
     await sleep(sleep_ms);
   }
