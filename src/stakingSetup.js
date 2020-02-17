@@ -25,8 +25,8 @@ async function createStashAccounts(api, transaction) {
         stashAccount.push(keyring.addFromUri(name, { name: name }));
     }
 
-    await topUpStashAccount(api, transaction, 16000, stashAccount);
-    await topUpStashAccount(api, transaction, 16001, stashAccount, transaction);
+    // await topUpStashAccount(api, transaction, 16000, stashAccount);
+    // await topUpStashAccount(api, transaction, 16001, stashAccount);
     await bondStashAccounts(api, stashAccount);
     await setSessionKey(api);
     await setNodesValidating(api);
@@ -36,7 +36,7 @@ async function bondStashAccounts(api, stashes) {
 
     for (i = 0; i < controllerAddrs.length; i++) {
         let lock = true;
-        let transfer = api.tx.staking.bond(controllerAddrs[i], "5_000_000", 0);
+        let transfer = api.tx.staking.bond(controllerAddrs[i], "5_000_000_000_000", 0); 
         // Sign and Send the transaction
         transfer.signAndSend(stashes[i], (result) => {
             if (result.isCompleted) {
