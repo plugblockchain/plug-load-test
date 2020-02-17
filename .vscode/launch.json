@@ -14,7 +14,7 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/src/app.js",
-            "args": ["--fund", "--period", "1000", "--plug"],
+            "args": ["--fund", "--period", "1000", "--plug", "--stake", "1"],
             "runtimeArgs": ["--harmony",
                 "--no-deprecation"
             ],

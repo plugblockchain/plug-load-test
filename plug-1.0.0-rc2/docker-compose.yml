@@ -12,8 +12,8 @@ services:
   #     block-network:
   #       ipv4_address: 10.5.0.20        
   
-  tx-node-1:
-    container_name: tx-node-1
+  tx-app-node:
+    container_name: tx-app-node
     image: "node:8"
     user: "node"
     working_dir: /home/node/app
@@ -33,9 +33,9 @@ services:
       block-network:
         ipv4_address: 10.5.0.10
 
-  boot-node-1:
+  boot-node-plug-1_0_0-rc2-1:
     image: plugnet/plugblockchain:1.0.0-rc2
-    container_name: boot-node-1
+    container_name: boot-node-plug-1_0_0-rc2-1
     volumes: ["./data/boot-node-1:/mnt/node"]
     command:
       - /usr/local/bin/plug
@@ -57,9 +57,9 @@ services:
       block-network:
         ipv4_address: 10.5.0.2
 
-  boot-node-2:
+  boot-node-plug-1_0_0-rc2-2:
     image: plugnet/plugblockchain:1.0.0-rc2
-    container_name: boot-node-2
+    container_name: boot-node-plug-1_0_0-rc2-2
     volumes: ["./data/boot-node-2:/mnt/node"]
     command:
       - /usr/local/bin/plug
@@ -86,9 +86,9 @@ services:
       block-network:
         ipv4_address: 10.5.0.3
 
-  boot-node-3:
+  boot-node-plug-1_0_0-rc2-3:
     image: plugnet/plugblockchain:1.0.0-rc2
-    container_name: boot-node-3
+    container_name: boot-node-plug-1_0_0-rc2-3
     volumes: ["./data/boot-node-3:/mnt/node"]
     command:
       - /usr/local/bin/plug
@@ -111,9 +111,9 @@ services:
       block-network:
         ipv4_address: 10.5.0.4
 
-  validator-node-1:
+  validator-node-plug-1_0_0-rc2-1:
     image: plugnet/plugblockchain:1.0.0-rc2
-    container_name: validator-node-1
+    container_name: validator-node-plug-1_0_0-rc2-1
     volumes: ["./data/validator-node-1:/mnt/node"]
     command:
       - /usr/local/bin/plug
@@ -133,9 +133,9 @@ services:
       block-network:
         ipv4_address: 10.5.0.5
 
-  validator-node-2:
+  validator-node-plug-1_0_0-rc2-2:
     image: plugnet/plugblockchain:1.0.0-rc2
-    container_name: validator-node-2
+    container_name: validator-node-plug-1_0_0-rc2-2
     volumes: ["./data/validator-node-2:/mnt/node"]
     command:
       - /usr/local/bin/plug
@@ -155,9 +155,9 @@ services:
       block-network:
         ipv4_address: 10.5.0.6
 
-  validator-node-3:
+  validator-node-plug-1_0_0-rc2-3:
     image: plugnet/plugblockchain:1.0.0-rc2 
-    container_name: validator-node-3
+    container_name: validator-node-plug-1_0_0-rc2-3
     volumes: ["./data/validator-node-3:/mnt/node"]
     command:
       - /usr/local/bin/plug
@@ -179,9 +179,9 @@ services:
       tx-network:
         ipv4_address: 10.6.0.03
       
-  validator-node-4:
+  validator-node-plug-1_0_0-rc2-4:
     image: plugnet/plugblockchain:1.0.0-rc2
-    container_name: validator-node-4
+    container_name: validator-node-plug-1_0_0-rc2-4
     volumes: ["./data/validator-node-4:/mnt/node"]
     command:
       - /usr/local/bin/plug
@@ -201,9 +201,9 @@ services:
       tx-network:
         ipv4_address: 10.6.0.04
 
-  validator-node-5:
+  validator-node-plug-1_0_0-rc2-5:
     image: plugnet/plugblockchain:1.0.0-rc2
-    container_name: validator-node-5
+    container_name: validator-node-plug-1_0_0-rc2-5
     volumes: ["./data/validator-node-5:/mnt/node"]
     command:
       - /usr/local/bin/plug

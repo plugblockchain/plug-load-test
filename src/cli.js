@@ -133,17 +133,6 @@ function parseCliArguments() {
     api_select = 'plug';
   }
 
-  // Format addresses and port correctly
-  let addresses = [];
-  for (let i = 0; i < args.address.length; i++) {
-    // Add default port if not specified
-    if (args.address[i].split(':').length == 1) {
-      args.address[i] = [args.address[i], default_port].join(":")
-    }
-    addresses.push(`ws://${args.address[i]}`);
-    console.log(`ADDRESSES ${args.address[i]}`)
-  }
-
   // Return a settings object
   let settings = {
     address: `ws://${args.address[0]}:${args.address[1]}`,

@@ -9,10 +9,8 @@ const cli = require('../src/cli.js');
 const selector = require('../src/selector.js');
 const addStaking = require('../src/stakingSetup');
 const { makeTransaction } = require('../src/transaction')
-const { sleep } = require('../src/utils')
+const { sleep, createTheSteves } = require('../src/utils')
 require('console-stamp')(console, 'HH:MM:ss.l');
-let log = require('console-log-level')({ level: 'info' });
-let createStashAccounts = require('../src/stakingSetup')
 
 const APP_SUCCESS = 0;
 const APP_FAIL_TRANSACTION_TIMEOUT = 2;
@@ -142,10 +140,11 @@ async function setup(settings) {
     steves
   );
 
-  const funds = 2000000000000;
+  const funds = 20000000;
 
   const config = {
     api,
+    addresses: settings.address,
     funds,
     transaction,
     timeout_ms: settings.transaction.timeout_ms,
@@ -214,7 +213,7 @@ async function run(config) {
       })
 
       transaction.then(
-        async function(addr) {
+        async function() {
           // Check if we have completed the test
           const block_delta = await getFinalizedBlockNumber(config.api) - config.start_block_number;
 
@@ -251,20 +250,6 @@ async function getFinalizedBlockNumber(api) {
   return header.number;
 }
 
-/// Generates a number of steve keypairs
-function createTheSteves(number, steve_keyring) {
-  log.info(`Steve Factory Initializing - Creating [${number}] Steves.`)
-  const steves = [];
-  for (i=0;i<number; i++) {
-    name = "Steve_0x" + (i).toString(16)
-    console.log(`Steve Factory - Creating`, name);
-
-    let steve = steve_keyring.addFromUri(name, {name: name});
-    steves.push(steve);
-  }
-  return steves;
-}
-
 /// Funds an array of Steve keypairs an adequate amount from a funder keypair
 /// The Steves are funded enough that they should now be registered on the chain
 async function fundTheSteves(steves, api, transaction, alice_and_friends, timeout_ms) {
@@ -286,17 +271,18 @@ async function fundTheSteves(steves, api, transaction, alice_and_friends, timeou
     while (busy[donor_index]) {
       await sleep(10)
     }
-    await sleep(100)
     busy[donor_index] = true
-    let p = new Promise(async function(resolve, reject) {
-      await makeTransaction(api, transaction, donor, steve, '100_000_000_000_000', timeout_ms, `funded ${tx_count}`)
-      .catch( (err) => {reject(err);});
+    new Promise(async function(resolve, reject){
+      await makeTransaction(api, transaction, donor, steve, '100_000_000_000_000', timeout_ms, `funded ${tx_count}`).catch(err => reject(err));
       resolve();
     })
-    p.then((_) => busy[donor_index] = false )
-    .catch(function(e){
-      console.log(e);
+    .then((_) => {
+      busy[donor_index] = false;
+    })
+    .catch((err) => {
+      console.log(err)
     });
+    
     tx_count++;
   }
 }
@@ -310,9 +296,4 @@ if (require.main === module) {
     console.error(`Error:`, fail);
     process.exit(fail[0]);
   });
-} else {
-  // Export modules for testing
-  module.exports = {
-    createTheSteves,
-  }
 }

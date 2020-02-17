@@ -40,22 +40,28 @@ async function makeTransaction(api, transaction, sender, receiver, funds, timeou
     // if (chain == CHAIN_CENNZNET)
   
     // Sign and send a balance transfer
-    const unsub = await transaction.transfer(api, receiver.address, funds)
-    .signAndSend(sender, {nonce: nonce}, (result) => {
-      console.log(id_string + `Current status is ${result.status}`);
-  
-      if (result.isCompleted) {
-        unsub();
-        if (result.isFinalized) {
-          hash = result.status.asFinalized;
-        }
-        else { // error
-          console.log(id_string + "Transaction Rejected");
-          throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected: ${result.status}`];
-        }
-      }
+    new Promise(async function(resolve, reject){
+      const unsub = await transaction.transfer(api, receiver.address, funds)
+        .signAndSend(sender, { nonce: nonce }, (result) => {
+          console.log(id_string + `Current status is ${result.status}`);
+
+          if (result.isCompleted) {
+            unsub();
+            resolve();
+            if (result.isFinalized) {
+              hash = result.status.asFinalized;
+            }
+            else { // error
+              console.log(id_string + "Transaction Rejected");
+              reject([APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected: ${result.status}`]);
+            }
+          }
+        })
+        .catch((err) => {
+          reject(err);
+        });
     })
-    .catch(err => transaction_error = err);
+    
   
     const timer = setTimeout(() => timed_out = true, timeout_ms);
   
@@ -72,10 +78,10 @@ async function makeTransaction(api, transaction, sender, receiver, funds, timeou
       }
       await sleep(sleep_ms);
     }
-  
+
     return hash;
   }
 
   module.exports = {
-    makeTransaction
+    makeTransaction: makeTransaction
   }

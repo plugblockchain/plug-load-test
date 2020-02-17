@@ -3,6 +3,7 @@ const { makeTransaction } = require('../src/transaction');
 let log = require('console-log-level')({ level: 'info' });
 const DEFAULT_SLEEP = 5000;
 const keyring = new Keyring({ type: 'sr25519' });
+const { sleep } = require('../src/utils')
 
 let transaction;
 let controllersKeyring = [];
@@ -27,15 +28,8 @@ async function createStashAccounts(api, transaction) {
     await topUpStashAccount(api, transaction, 16000, stashAccount);
     await topUpStashAccount(api, transaction, 16001, stashAccount, transaction);
     await bondStashAccounts(api, stashAccount);
-    await setSessionKey(api)
-    .catch((err) => console.log(err));
+    await setSessionKey(api);
     await setNodesValidating(api);
-}
-
-function sleep(ms = DEFAULT_SLEEP) {
-    return new Promise(resolve => {
-        setTimeout(resolve, ms)
-    })
 }
 
 async function bondStashAccounts(api, stashes) {
@@ -81,7 +75,7 @@ async function setSessionKey(api) {
         let keys = await api.rpc.author.rotateKeys();
         log.info(`Setting session key ${controllersKeyring[i]}`)
         let lock = true;
-        let tx = new Promise(async function (resolve, reject) {
+        new Promise(async function (resolve, reject) {
             const transfer = await api.tx.session.setKeys(keys, new Uint8Array());
             transfer.signAndSend(controllersKeyring[i], (result) => {
 
@@ -139,13 +133,15 @@ async function setNodesValidating(api) {
 }
 
 async function topUpStashAccount(api, transaction, type, stashAccounts) {
-    lock = false;
+    let lock;
     for ([i, account] of stashAccounts.entries()) {
         lock = true;
         log.info(`TOP UP stash balance with ${type} -------------- \n ${account.meta.name}`)
         log.info(`Transfering to ${account.meta.name}`)  
-        await makeTransaction(api, transaction, aliceKeyring, account, '100_000_000_000_000', 5000, `funded ${i}`).finally(lock = false)
-
+        new Promise(async function () {
+            await makeTransaction(api, transaction, aliceKeyring, account, '100_000_000_000_000', 5000, `funded ${i}`);
+            lock = false;
+        })
         while (lock) {
             await sleep(200);
         }
