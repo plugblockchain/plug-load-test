@@ -11,6 +11,8 @@ const addStaking = require('../src/stakingSetup');
 const { makeTransaction } = require('../src/transaction')
 const { sleep } = require('../src/utils')
 require('console-stamp')(console, 'HH:MM:ss.l');
+let log = require('console-log-level')({ level: 'info' });
+let createStashAccounts = require('../src/stakingSetup')
 
 const APP_SUCCESS = 0;
 const APP_FAIL_TRANSACTION_TIMEOUT = 2;
@@ -110,8 +112,8 @@ async function setup(settings) {
   // Gather all required users
   const testKey = new Keyring({ type: 'sr25519'});
 
-  const required_users = 2*settings.transaction.timeout_ms/settings.transaction.period_ms;
-  const required_steves = Math.max(1, Math.floor(required_users-6));
+  const required_users = 2 * settings.transaction.timeout_ms / settings.transaction.period_ms;
+  const required_steves = Math.max(1, Math.floor(required_users));
 
   const steve_keyring = new Keyring({type: 'sr25519'});
   const steves = createTheSteves(required_steves, steve_keyring);
@@ -171,6 +173,9 @@ async function run(config) {
   let app_complete = false;
   let app_error = null;
 
+  // Round robin api selection
+  let api_idx = 0;
+
   const poll_period_ms = 10;
 
   let count = 0;
@@ -192,14 +197,15 @@ async function run(config) {
       let thrown_error = null;
 
       var transaction = new Promise(async function(resolve, reject){
+        const addr = config.addresses[api_idx];
         const [sender, receiver] = config.keypair_selector.next();
         const transaction_hash = await makeTransaction(config.api, config.transaction, sender, receiver, config.funds, config.timeout_ms, tx_count)
         .catch(err => thrown_error = err);
 
         if (thrown_error != null) {
-          reject(thrown_error);
+          reject([thrown_error, addr]);
         } else if (transaction_hash == null) {
-          reject([APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"])
+          reject([[APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"], addr])
         } else {
           const header = await config.api.rpc.chain.getHeader(transaction_hash);
           console.log(`Transaction included on block ${header.number} with blockHash ${transaction_hash}`);
@@ -208,7 +214,7 @@ async function run(config) {
       })
 
       transaction.then(
-        async function() {
+        async function(addr) {
           // Check if we have completed the test
           const block_delta = await getFinalizedBlockNumber(config.api) - config.start_block_number;
 
@@ -247,7 +253,7 @@ async function getFinalizedBlockNumber(api) {
 
 /// Generates a number of steve keypairs
 function createTheSteves(number, steve_keyring) {
-  console.log(`Steve Factory Initializing - Creating [${number}] Steves.`)
+  log.info(`Steve Factory Initializing - Creating [${number}] Steves.`)
   const steves = [];
   for (i=0;i<number; i++) {
     name = "Steve_0x" + (i).toString(16)
@@ -256,7 +262,6 @@ function createTheSteves(number, steve_keyring) {
     let steve = steve_keyring.addFromUri(name, {name: name});
     steves.push(steve);
   }
-
   return steves;
 }
 

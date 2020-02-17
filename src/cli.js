@@ -11,7 +11,7 @@ function forceInt(value, default_value) {
 
 function parseCliArguments() {
   const default_ip_address = '127.0.0.1';
-  const default_port = 9944;
+  const default_port = '9944';
   const default_timeout_ms = 5000;
   const default_period_ms = 5000;
   const default_block_delta = 10000;
@@ -131,6 +131,16 @@ function parseCliArguments() {
   let api_select = 'cennznet';
   if (args.plug === true && args.cennznet === false) {
     api_select = 'plug';
+  }
+
+  // Format addresses and port correctly
+  let addresses = [];
+  for (let i = 0; i < args.address.length; i++) {
+    // Add default port if not specified
+    if (args.address[i].split(':').length == 1) {
+      args.address[i] = [args.address[i], default_port].join(":")
+    }
+    addresses.push(`ws://${args.address[i]}`);
   }
 
   // Return a settings object
