@@ -5,13 +5,16 @@
 const { Keyring, ApiPromise, WsProvider } = require('@polkadot/api');
 const PlugRuntimeTypes = require('@plugnet/plug-api-types');
 const { Api } = require('@cennznet/api');
-const testingPairs = require('@plugnet/keyring/testingPairs');
 const cli = require('../src/cli.js');
 const selector = require('../src/selector.js');
+const addStaking = require('../src/stakingSetup');
+const { makeTransaction } = require('../src/transaction')
+const { sleep } = require('../src/utils')
 require('console-stamp')(console, 'HH:MM:ss.l');
+let log = require('console-log-level')({ level: 'info' });
+let createStashAccounts = require('../src/stakingSetup')
 
 const APP_SUCCESS = 0;
-const APP_FAIL_TRANSACTION_REJECTED = 1;
 const APP_FAIL_TRANSACTION_TIMEOUT = 2;
 
 async function main (settings) {
@@ -75,14 +78,14 @@ async function getPlugApi(address) {
 
 const cennznet_transaction = {
   transfer: (api, receiver, funds) =>
-    api.tx.genericAsset.transfer(16001, receiver.address, funds),
+    api.tx.genericAsset.transfer(16001, receiver, funds),
   balance: (api, sender_address) =>
     api.query.genericAsset.freeBalance(16001, sender_address)
 }
 
 const plug_transaction = {
   transfer: (api, receiver, funds) =>
-    api.tx.balances.transfer(receiver.address, funds),
+    api.tx.balances.transfer(receiver, funds),
   balance: (api, sender_address) =>
     api.query.balances.freeBalance(sender_address)
 }
@@ -107,31 +110,39 @@ async function setup(settings) {
   const start_block_number = await getFinalizedBlockNumber(api)
 
   // Gather all required users
-  const keyring = testingPairs.default({ type: 'sr25519'});
+  const testKey = new Keyring({ type: 'sr25519'});
 
-  // const required_users = 2*settings.transaction.timeout_ms/settings.transaction.period_ms;
-  // const required_steves = Math.max(1, Math.floor(required_users-6));
+  const required_users = 2 * settings.transaction.timeout_ms / settings.transaction.period_ms;
+  const required_steves = Math.max(1, Math.floor(required_users));
 
-  // const steve_keyring = new Keyring.Keyring({type: 'sr25519'});
-  // const steves = createTheSteves(required_steves, steve_keyring);
-  // if (settings.fund) {
-  //   await fundTheSteves(
-  //     steves,
-  //     api,
-  //     transaction,
-  //     [keyring.alice, keyring.bob, keyring.charlie, keyring.ferdie, keyring.dave, keyring.eve],
-  //     settings.transaction.timeout_ms
-  //     );
-  // }
+  const steve_keyring = new Keyring({type: 'sr25519'});
+  const steves = createTheSteves(required_steves, steve_keyring);
+  const aliceKeyring = testKey.addFromUri('//Alice');
+  const bobKeyring = testKey.addFromUri('//Bob');
+  const charlieKeyring = testKey.addFromUri('//Charlie');
+  const ferdieKeyring = testKey.addFromUri('//Ferdie');
+  const daveKeyring = testKey.addFromUri('//Dave');
+  const eveKeyring = testKey.addFromUri('//Eve');
+
+  if(settings.staking_validators > 0){
+    await addStaking.createStashAccounts(api, transaction);
+  }
+
+  if (settings.fund) {
+    await fundTheSteves(
+      steves,
+      api,
+      transaction,
+      [aliceKeyring, bobKeyring, charlieKeyring, ferdieKeyring, daveKeyring, eveKeyring],
+      settings.transaction.timeout_ms
+      );
+  }
 
   const keypair_selector = new selector.KeypairSelector(
-    [
-      keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice, keyring.alice,
-      keyring.bob
-    ]
+    steves
   );
 
-  const funds = 5000;
+  const funds = 2000000000000;
 
   const config = {
     api,
@@ -142,6 +153,7 @@ async function setup(settings) {
     keypair_selector: keypair_selector,
     start_block_number: start_block_number,
     required_block_delta: settings.exit.block_delta,
+    add_staking_validator: settings.add_staking_validators
   }
 
   return config;
@@ -160,6 +172,9 @@ async function run(config) {
   // These varaibles allow asynchronous functions to recommend script termination
   let app_complete = false;
   let app_error = null;
+
+  // Round robin api selection
+  let api_idx = 0;
 
   const poll_period_ms = 10;
 
@@ -182,23 +197,24 @@ async function run(config) {
       let thrown_error = null;
 
       var transaction = new Promise(async function(resolve, reject){
+        const addr = config.addresses[api_idx];
         const [sender, receiver] = config.keypair_selector.next();
         const transaction_hash = await makeTransaction(config.api, config.transaction, sender, receiver, config.funds, config.timeout_ms, tx_count)
         .catch(err => thrown_error = err);
 
         if (thrown_error != null) {
-          reject(thrown_error);
+          reject([thrown_error, addr]);
         } else if (transaction_hash == null) {
-          reject([APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"])
+          reject([[APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"], addr])
         } else {
           const header = await config.api.rpc.chain.getHeader(transaction_hash);
           console.log(`Transaction included on block ${header.number} with blockHash ${transaction_hash}`);
           resolve()
         }
-      });
+      })
 
       transaction.then(
-        async function() {
+        async function(addr) {
           // Check if we have completed the test
           const block_delta = await getFinalizedBlockNumber(config.api) - config.start_block_number;
 
@@ -210,7 +226,10 @@ async function run(config) {
           }
         },
         (err) => app_error = err
-        );
+        )
+        .catch(function (e) {
+          console.log(e);
+        })
 
       tx_count++;
 
@@ -232,74 +251,9 @@ async function getFinalizedBlockNumber(api) {
   return header.number;
 }
 
-function id_to_string(id) {
-  const zeropads = 4;
-  const id_string = ("0".repeat(zeropads) + id.toString(16)).substr(-zeropads);
-  return `<TX ${id_string}>     `;
-}
-
-async function makeTransaction(api, transaction, sender, receiver, funds, timeout_ms, tx_id)  {
-  const sleep_ms = 50;
-  const id_string = id_to_string(tx_id);
-  let timed_out = false;
-  let transaction_error = null;
-  let hash = null;
-  // Verbose transaction information -- could be removed in the future
-  let nonce = await api.query.system.accountNonce(sender.address);
-  let sender_balance = await transaction.balance(api, sender.address);
-  let receiver_balance = await transaction.balance(api, receiver.address);
-  console.log(
-    id_string +
-    `${sender.meta.name} [${sender_balance}] =>`,
-    `${receiver.meta.name} [${receiver_balance}]`,
-    `: Nonce - ${nonce.words}`
-    );
-
-  const keyring = new Keyring({type: 'sr25519'});
-  const alice = keyring.addFromUri('//Alice');
-
-  // if (chain == CHAIN_CENNZNET)
-
-  // Sign and send a balance transfer
-  const unsub = await transaction.transfer(api, receiver.address, funds)
-  .signAndSend(alice, {nonce: nonce}, (result) => {
-    console.log(id_string + `Current status is ${result.status}`);
-
-    if (result.isCompleted) {
-      unsub();
-      if (result.isFinalized) {
-        hash = result.status.asFinalized;
-      }
-      else { // error
-        console.log(id_string + "Transaction Rejected");
-        throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected: ${result.status}`];
-      }
-    }
-  })
-  .catch(err => transaction_error = err);
-
-  const timer = setTimeout(() => timed_out = true, timeout_ms);
-
-  // periodically checks whether we have timed out
-  // avoided sleeping here so that we can report a successful transation at the time
-  // it occurs.
-  while(timed_out == false) {
-    if (hash != null) {
-      clearTimeout(timer);
-      break;
-    }
-    if (transaction_error != null) {
-      throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected: ${transaction_error}`];
-    }
-    await sleep(sleep_ms);
-  }
-
-  return hash;
-}
-
 /// Generates a number of steve keypairs
 function createTheSteves(number, steve_keyring) {
-  console.log(`Steve Factory Initializing - Creating [${number}] Steves.`)
+  log.info(`Steve Factory Initializing - Creating [${number}] Steves.`)
   const steves = [];
   for (i=0;i<number; i++) {
     name = "Steve_0x" + (i).toString(16)
@@ -308,7 +262,6 @@ function createTheSteves(number, steve_keyring) {
     let steve = steve_keyring.addFromUri(name, {name: name});
     steves.push(steve);
   }
-
   return steves;
 }
 
@@ -320,6 +273,7 @@ async function fundTheSteves(steves, api, transaction, alice_and_friends, timeou
   let busy = new Array(len).fill(false)
   let index = 0
   let steve;
+  let tx_count = 0
   for (steve of steves) {
     let donor_index = index
     let donor = alice_and_friends[donor_index]
@@ -335,18 +289,17 @@ async function fundTheSteves(steves, api, transaction, alice_and_friends, timeou
     await sleep(100)
     busy[donor_index] = true
     let p = new Promise(async function(resolve, reject) {
-      await makeTransaction(api, transaction, donor, steve, '100_000_000_000_000', timeout_ms)
-      .catch( (err) => {throw err;});
-      resolve(true);
+      await makeTransaction(api, transaction, donor, steve, '100_000_000_000_000', timeout_ms, `funded ${tx_count}`)
+      .catch( (err) => {reject(err);});
+      resolve();
     })
     p.then((_) => busy[donor_index] = false )
+    .catch(function(e){
+      console.log(e);
+    });
+    tx_count++;
   }
 }
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 
 if (require.main === module) {
   settings = cli.parseCliArguments();
@@ -363,8 +316,3 @@ if (require.main === module) {
     createTheSteves,
   }
 }
-
-
-
-
-

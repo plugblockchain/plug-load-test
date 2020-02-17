@@ -8,9 +8,8 @@ function KeypairSelector(keypairs) {
     }
 
     let items = this.keypairs.slice(0);
-    const sender = items[0];//.splice(this.index,1)[0];
-    const receiver = items.splice(this.index,1)[0];
-    //const receiver = items[Math.floor(Math.random() * items.length)];
+    const sender = items.splice(this.index,1)[0];
+    const receiver = items[Math.floor(Math.random() * items.length)];
 
     this.index ++;
     if (this.index >= this.keypairs.length) {

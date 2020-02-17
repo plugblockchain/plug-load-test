@@ -4,9 +4,7 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-data
-*.txt
-*.csv
+data*
 
 # Runtime data
 pids
@@ -39,7 +37,7 @@ build/Release
 node_modules/
 jspm_packages/
 # package-lock is ignored because not all selected packages are suitable between machine architectures
-package-lock.json
+package-lock.json 
 
 # TypeScript v1 declaration files
 typings/
@@ -67,3 +65,4 @@ typings/
 
 # mac things
 .DS_Store
+.vscode/launch.json
