@@ -1,5 +1,5 @@
 const { makeTransaction } = require('../src/transaction')
-const { sleep } = require('../src/utils')
+const { sleep, getFinalizedBlockNumber } = require('../src/utils')
 
 const APP_SUCCESS = 0;
 const APP_FAIL_TRANSACTION_INVALID = 1;
@@ -89,12 +89,6 @@ async function runLoad(config) {
       await sleep(poll_period_ms);
     }
   }
-}
-
-async function getFinalizedBlockNumber(api) {
-  const hash = await api.rpc.chain.getFinalizedHead();
-  const header = await api.rpc.chain.getHeader(hash);
-  return header.number;
 }
 
 module.exports = {
