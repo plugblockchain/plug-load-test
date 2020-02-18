@@ -1,13 +1,16 @@
 {
   "dependencies": {
-    "@plugnet/keyring": "=1.1.100",
-    "@plugnet/plug-api-types": "git+https://github.com/plugblockchain/plug-api-types.git#1.0.0-rc1",
-    "@polkadot/api": "0.96.1",
+    "@cennznet/api": "^0.20.7",
+    "@plugnet/keyring": "^1.1.100",
+    "@plugnet/plug-api-types": "git+https://github.com/plugblockchain/plug-api-types.git#1.0.0-rc2",
+    "@polkadot/api": "^0.100.1",
     "argparse": "1.0.10",
+    "console-log-level": "^1.4.1",
     "console-stamp": "^0.2.9",
     "mocha": "^6.2.2"
   },
   "scripts": {
-    "test": "mocha --reporter nyan"
+    "test": "mocha --reporter nyan",
+    "pumba": "docker exec pumba pumba netem --tc-image gaiadocker/iproute2 --duration 2m loss -p 60 re2:validator-node-*"
   }
 }

@@ -11,11 +11,12 @@ function forceInt(value, default_value) {
 
 function parseCliArguments() {
   const default_ip_address = '127.0.0.1';
-  const default_port = 9944;
+  const default_port = '9944';
   const default_timeout_ms = 5000;
   const default_period_ms = 5000;
   const default_block_delta = 10000;
   const default_startup_delay_ms = 0;
+  const default_add_staking_validators = 0;
 
 
   let parser = ArgParse.ArgumentParser()
@@ -69,6 +70,46 @@ function parseCliArguments() {
       dest: 'startup_delay_ms'
     }
   );
+  parser.addArgument(
+    ['--fund'],
+    {
+      help: 'Whether to fund the Steves',
+      defaultValue: false,
+      action: 'storeTrue',
+      nargs: '0',
+      dest: 'fund'
+    }
+  );
+  parser.addArgument(
+    [`--cennznet`],
+    {
+      help: 'Run against a cennznet chain (default)',
+      defaultValue: false,
+      action: 'storeTrue',
+      nargs: '0',
+      dest: 'cennznet'
+    }
+  );
+  parser.addArgument(
+    [`--plug`],
+    {
+      help: 'Run against a plug chain',
+      defaultValue: false,
+      action: 'storeTrue',
+      nargs: '0',
+      dest: 'plug'
+    }
+  );
+  parser.addArgument(
+    [`--stake`],
+    {
+      help: 'Add staking validators',
+      defaultValue: default_add_staking_validators,
+      nargs: '1',
+      dest: 'add_staking_validators'
+    }
+  );
+
 
   let args = parser.parseArgs()
 
@@ -85,6 +126,12 @@ function parseCliArguments() {
   args.period_ms = forceInt(args.period_ms, default_period_ms);
   args.block_delta = forceInt(args.block_delta, default_block_delta);
   args.startup_delay_ms = forceInt(args.startup_delay_ms, default_startup_delay_ms);
+  args.add_staking_validators = forceInt(args.add_staking_validators, 0);
+
+  let api_select = 'cennznet';
+  if (args.plug === true && args.cennznet === false) {
+    api_select = 'plug';
+  }
 
   // Return a settings object
   let settings = {
@@ -96,14 +143,17 @@ function parseCliArguments() {
     },
     exit: {
       block_delta: args.block_delta
-    }
+    },
+    fund: args.fund,
+    api: api_select,
+    staking_validators: args.add_staking_validators
   }
   return settings;
 }
 
 if (require.main === module) {
   settings = parseCliArguments()
-  
+
   console.log(settings)
 } else {
   // Export modules for testing
@@ -111,4 +161,3 @@ if (require.main === module) {
     parseCliArguments: parseCliArguments
   }
 }
-
