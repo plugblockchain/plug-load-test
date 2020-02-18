@@ -12,8 +12,8 @@ services:
   #     block-network:
   #       ipv4_address: 10.5.0.20        
   
-  tx-app-node:
-    container_name: tx-app-node
+  tx-app:
+    container_name: tx-app
     image: "node:8"
     user: "node"
     working_dir: /home/node/app

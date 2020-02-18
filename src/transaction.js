@@ -1,7 +1,6 @@
 const { sleep } = require('../src/utils')
 const cli = require('../src/cli');
 
-const APP_FAIL_TRANSACTION_REJECTED = 1;
 let settings = cli.parseCliArguments();
 
 function id_to_string(id) {
@@ -53,11 +52,12 @@ async function makeTransaction(api, transaction, sender, receiver, funds, timeou
             }
             else { // error
               console.log(id_string + "Transaction Rejected");
-              reject([APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected: ${result.status}`]);
+              reject(id_string + ` Transaction rejected: ${result.status}`);
             }
           }
         })
         .catch((err) => {
+          transaction_error = err;
           reject(err);
         });
     })
@@ -74,7 +74,7 @@ async function makeTransaction(api, transaction, sender, receiver, funds, timeou
         break;
       }
       if (transaction_error != null) {
-        throw [APP_FAIL_TRANSACTION_REJECTED, id_string + `Transaction rejected: ${transaction_error}`];
+        throw (id_string + `Transaction error: ${transaction_error}`);
       }
       await sleep(sleep_ms);
     }

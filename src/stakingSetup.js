@@ -25,8 +25,8 @@ async function createStashAccounts(api, transaction) {
         stashAccount.push(keyring.addFromUri(name, { name: name }));
     }
 
-    // await topUpStashAccount(api, transaction, 16000, stashAccount);
-    // await topUpStashAccount(api, transaction, 16001, stashAccount);
+    await topUpStashAccount(api, transaction, 16000, stashAccount);
+    await topUpStashAccount(api, transaction, 16001, stashAccount);
     await bondStashAccounts(api, stashAccount);
     await setSessionKey(api);
     await setNodesValidating(api);
