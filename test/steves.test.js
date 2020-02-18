@@ -1,5 +1,5 @@
 const assert = require('assert');
-const app = require('../src/app.js');
+const app = require('../src/steves.js');
 
 class FakeKeyring {
   constructor() {

@@ -5,38 +5,31 @@ describe('Command Line Interface - IP Address', function() {
   it('Default Address', function() {
     process.argv = 'node cli.test.js'.split(' ');
     result = cli.parseCliArguments();
-    assert.equal(result.address.length, 1);
-    assert.equal(result.address[0], "ws://127.0.0.1:9944");
+    assert.equal(result.address, "ws://127.0.0.1:9944");
   });
 
   it('New Address', function() {
-    process.argv = 'node cli.test.js --address 0.0.0.0:1234'.split(' ');
+    process.argv = 'node cli.test.js --address 0.0.0.0 1234'.split(' ');
     result = cli.parseCliArguments();
-    assert.equal(result.address.length, 1);
-    assert.equal(result.address[0], "ws://0.0.0.0:1234");
+    assert.equal(result.address, "ws://0.0.0.0:1234");
   });
 
   it('Change ip address only', function() {
     process.argv = 'node cli.test.js --address 0.0.0.0'.split(' ');
     result = cli.parseCliArguments();
-    assert.equal(result.address.length, 1);
-    assert.equal(result.address[0], "ws://0.0.0.0:9944");
+    assert.equal(result.address, "ws://0.0.0.0:9944");
   });
 
   it('IP address can be a string', function() {
-    process.argv = 'node cli.test.js --address node:1234'.split(' ');
+    process.argv = 'node cli.test.js --address node 1234'.split(' ');
     result = cli.parseCliArguments();
-    assert.equal(result.address.length, 1);
-    assert.equal(result.address[0], "ws://node:1234");
+    assert.equal(result.address, "ws://node:1234");
   });
 
-  it('Can have multiple addresses', function() {
-    process.argv = 'node cli.test.js --address 0.0.0.0:1 0.0.0.0:2 0.0.0.0:3'.split(' ');
+  it('Secure Websocket flag', function() {
+    process.argv = 'node cli.test.js --address node 1234 --wss'.split(' ');
     result = cli.parseCliArguments();
-    let tests = ["ws://0.0.0.0:1", "ws://0.0.0.0:2", "ws://0.0.0.0:3"];
-    for (let i = 0; i < result.address.length; i++) {
-      assert.equal(result.address[i], tests[i]);
-    }
+    assert.equal(result.address, "wss://node:1234");
   });
 });
 
@@ -107,16 +100,17 @@ describe('Command Line Interface - Fund', function() {
   });
 });
 
-describe('Command Line Interface - Log Level', function () {
-  it('Should set log-level info by default', function () {
+describe('Set mode', function() {
+  it('Default is load', function () {
     process.argv = 'node cli.test.js'.split(' ');
     result = cli.parseCliArguments();
-    assert.equal(result.log_level, 'info');
+    assert.equal(result.mode, "load");
   });
 
-  it('Should set log-level', function () {
-    process.argv = 'node cli.test.js --log-level debug'.split(' ');
+  it('invalid mode goes to load', function () {
+    process.argv = 'node cli.test.js --mode invalid'.split(' ');
     result = cli.parseCliArguments();
-    assert.equal(result.log_level, 'debug');
+    assert.equal(result.mode, "load");
   });
 });
+
