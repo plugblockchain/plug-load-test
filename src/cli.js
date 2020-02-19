@@ -17,7 +17,8 @@ function parseCliArguments() {
   const default_block_delta = 10000;
   const default_startup_delay_ms = 0;
   const default_add_staking_validators = 0;
-
+  const valid_modes = ["load"];
+  const default_mode = "load";
 
   let parser = ArgParse.ArgumentParser()
   parser.addArgument(
@@ -28,6 +29,16 @@ function parseCliArguments() {
       metavar: ['ip-addr', 'port-num'],
       nargs: '+',
       dest: 'address'
+    }
+  );
+  parser.addArgument(
+    ['--wss'],
+    {
+      help: 'Use secure web socket protocol',
+      defaultValue: false,
+      nargs: 0,
+      action: 'storeTrue',
+      dest: 'wss'
     }
   );
   parser.addArgument(
@@ -109,6 +120,15 @@ function parseCliArguments() {
       dest: 'add_staking_validators'
     }
   );
+  parser.addArgument(
+    [`--mode`],
+    {
+      help: 'Select which mode to run: load (default)' ,
+      defaultValue: default_mode,
+      nargs: '1',
+      dest: 'mode'
+    }
+  );
 
 
   let args = parser.parseArgs()
@@ -120,6 +140,10 @@ function parseCliArguments() {
   else if (args.address.length >= 2) {
     args.address[1] = forceInt(args.address[1], default_port);
   }
+
+  // Add ws or wss to address
+  let addressString = `://${args.address[0]}:${args.address[1]}`;
+  addressString = (args.wss) ? `wss${addressString}` : `ws${addressString}`;
 
   // Force all integers to be integers
   args.timeout_ms = forceInt(args.timeout_ms, default_timeout_ms);
@@ -133,9 +157,15 @@ function parseCliArguments() {
     api_select = 'plug';
   }
 
+  // Mode selection:
+  if ((args.mode in valid_modes) == false) {
+    args.mode = default_mode;
+  }
+
   // Return a settings object
   let settings = {
-    address: `ws://${args.address[0]}:${args.address[1]}`,
+    mode: args.mode,
+    address: addressString,
     startup_delay_ms: args.startup_delay_ms,
     transaction: {
       timeout_ms: args.timeout_ms,

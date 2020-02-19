@@ -6,17 +6,17 @@ const { Keyring, ApiPromise, WsProvider } = require('@polkadot/api');
 const PlugRuntimeTypes = require('@plugnet/plug-api-types');
 const { Api } = require('@cennznet/api');
 const cli = require('../src/cli.js');
-const selector = require('../src/selector.js');
 const addStaking = require('../src/stakingSetup');
-const { makeTransaction } = require('../src/transaction')
-const { sleep, createTheSteves } = require('../src/utils')
+const selector = require('../src/selector.js');
+const { runLoad } = require('../src/loadRunner')
+const { sleep, getFinalizedBlockNumber } = require('../src/utils')
+const { createTheSteves, fundTheSteves } = require('../src/steves')
 require('console-stamp')(console, 'HH:MM:ss.l');
 
-const APP_SUCCESS = 0;
-const APP_FAIL_TRANSACTION_TIMEOUT = 2;
+
 
 async function main (settings) {
-  let result = APP_SUCCESS;
+  let result = -1;
   const config = await setup(settings);
   while(true) {
     try {
@@ -115,12 +115,12 @@ async function setup(settings) {
 
   const steve_keyring = new Keyring({type: 'sr25519'});
   const steves = createTheSteves(required_steves, steve_keyring);
-  const aliceKeyring = testKey.addFromUri('//Alice');
-  const bobKeyring = testKey.addFromUri('//Bob');
-  const charlieKeyring = testKey.addFromUri('//Charlie');
-  const ferdieKeyring = testKey.addFromUri('//Ferdie');
-  const daveKeyring = testKey.addFromUri('//Dave');
-  const eveKeyring = testKey.addFromUri('//Eve');
+  const aliceKeyring = testKey.addFromUri('//Alice', {name: 'Alice'});
+  const bobKeyring = testKey.addFromUri('//Bob', {name: 'Bob'});
+  const charlieKeyring = testKey.addFromUri('//Charlie', {name: 'Charlie'});
+  const ferdieKeyring = testKey.addFromUri('//Ferdie', {name: 'Ferdie'});
+  const daveKeyring = testKey.addFromUri('//Dave', {name: 'Dave'});
+  const eveKeyring = testKey.addFromUri('//Eve', {name: 'Eve'});
 
   if(settings.staking_validators > 0){
     await addStaking.createStashAccounts(api, transaction);
@@ -152,138 +152,17 @@ async function setup(settings) {
     keypair_selector: keypair_selector,
     start_block_number: start_block_number,
     required_block_delta: settings.exit.block_delta,
-    add_staking_validator: settings.add_staking_validators
+    add_staking_validator: settings.add_staking_validators,
+    mode: settings.mode
   }
 
   return config;
 }
 
 async function run(config) {
-
-  let tx_count = 0;
-
-  // SetInterval is used to ensure precise transaction rates
-  let pending_transaction = 0;
-  let interval = setInterval(function() {
-    pending_transaction++;
-  }, config.request_period_ms);
-
-  // These varaibles allow asynchronous functions to recommend script termination
-  let app_complete = false;
-  let app_error = null;
-
-  // Round robin api selection
-  let api_idx = 0;
-
-  const poll_period_ms = 10;
-
-  let count = 0;
-
-  // Loop exits once app_complete or app_error change
-  while (true){
-    // triggers a new transaction if needed
-    if (pending_transaction > 0) {
-      count++;
-      pending_transaction--;
-
-      if (count == 10000) {
-        clearInterval(interval)
-        interval = setInterval(function() {
-          pending_transaction++;
-        }, 10000);
-      }
-
-      let thrown_error = null;
-
-      var transaction = new Promise(async function(resolve, reject){
-        const addr = config.addresses[api_idx];
-        const [sender, receiver] = config.keypair_selector.next();
-        const transaction_hash = await makeTransaction(config.api, config.transaction, sender, receiver, config.funds, config.timeout_ms, tx_count)
-        .catch(err => thrown_error = err);
-
-        if (thrown_error != null) {
-          reject([thrown_error, addr]);
-        } else if (transaction_hash == null) {
-          reject([[APP_FAIL_TRANSACTION_TIMEOUT, "Transaction Timeout"], addr])
-        } else {
-          const header = await config.api.rpc.chain.getHeader(transaction_hash);
-          console.log(`Transaction included on block ${header.number} with blockHash ${transaction_hash}`);
-          resolve()
-        }
-      })
-
-      transaction.then(
-        async function() {
-          // Check if we have completed the test
-          const block_delta = await getFinalizedBlockNumber(config.api) - config.start_block_number;
-
-          console.log(`At block: ${block_delta} of ${config.required_block_delta}`)
-
-          if (block_delta >= config.required_block_delta) {
-            clearInterval(interval);
-            app_complete = true;
-          }
-        },
-        (err) => app_error = err
-        )
-        .catch(function (e) {
-          console.log(e);
-        })
-
-      tx_count++;
-
-    } else if (app_complete) {
-      return APP_SUCCESS;
-    } else if (app_error != null) {
-      console.log("Error thrown:", app_error);
-      app_error = null
-      await sleep(poll_period_ms);
-    } else {
-      await sleep(poll_period_ms);
-    }
-  }
-}
-
-async function getFinalizedBlockNumber(api) {
-  const hash = await api.rpc.chain.getFinalizedHead();
-  const header = await api.rpc.chain.getHeader(hash);
-  return header.number;
-}
-
-/// Funds an array of Steve keypairs an adequate amount from a funder keypair
-/// The Steves are funded enough that they should now be registered on the chain
-async function fundTheSteves(steves, api, transaction, alice_and_friends, timeout_ms) {
-  console.log(`Steve Factory - Funding All Steves.`)
-  let len = alice_and_friends.length
-  let busy = new Array(len).fill(false)
-  let index = 0
-  let steve;
-  let tx_count = 0
-  for (steve of steves) {
-    let donor_index = index
-    let donor = alice_and_friends[donor_index]
-
-    index += 1
-    if (index >= len) {
-      index = 0
-    }
-
-    while (busy[donor_index]) {
-      await sleep(10)
-    }
-    busy[donor_index] = true
-    new Promise(async function(resolve, reject){
-      await makeTransaction(api, transaction, donor, steve, '100_000_000_000_000', timeout_ms, `funded ${tx_count}`).catch(err => reject(err));
-      resolve();
-    })
-    .then((_) => {
-      busy[donor_index] = false;
-    })
-    .catch((err) => {
-      console.log(err)
-    });
-    
-    tx_count++;
+  console.log(`Mode: ${config.mode}`)
+  if (config.mode === "load") {
+    return runLoad(config);
   }
 }
 
