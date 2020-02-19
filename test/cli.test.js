@@ -114,3 +114,17 @@ describe('Set mode', function() {
   });
 });
 
+describe('Set additional staking', function() {
+  it('Default is 0', function () {
+    process.argv = 'node cli.test.js'.split(' ');
+    result = cli.parseCliArguments();
+    assert.equal(result.staking_validators, 0);
+  });
+
+  it('invalid param goes to default', function () {
+    process.argv = 'node cli.test.js --stake invalid'.split(' ');
+    result = cli.parseCliArguments();
+    assert.equal(result.staking_validators, 0);
+  });
+});
+
