@@ -1,5 +1,6 @@
 const log = require('console-log-level')({ level: 'info' });
 const { makeTransaction } = require('../src/transaction')
+const { sleep } = require('./utils')
 
 /// Generates a number of steve keypairs
 function createTheSteves(number, steve_keyring) {

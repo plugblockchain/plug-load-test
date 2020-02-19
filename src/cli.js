@@ -16,7 +16,7 @@ function parseCliArguments() {
   const default_period_ms = 5000;
   const default_block_delta = 10000;
   const default_startup_delay_ms = 0;
-  const default_add_staking_validators = 0;
+  const default_staking_validators = 0;
   const valid_modes = ["load"];
   const default_mode = "load";
 
@@ -115,9 +115,9 @@ function parseCliArguments() {
     [`--stake`],
     {
       help: 'Add staking validators',
-      defaultValue: default_add_staking_validators,
+      defaultValue: default_staking_validators,
       nargs: '1',
-      dest: 'add_staking_validators'
+      dest: 'staking_validators'
     }
   );
   parser.addArgument(
@@ -150,7 +150,7 @@ function parseCliArguments() {
   args.period_ms = forceInt(args.period_ms, default_period_ms);
   args.block_delta = forceInt(args.block_delta, default_block_delta);
   args.startup_delay_ms = forceInt(args.startup_delay_ms, default_startup_delay_ms);
-  args.add_staking_validators = forceInt(args.add_staking_validators, 0);
+  args.staking_validators = forceInt(args.staking_validators, 0);
 
   let api_select = 'cennznet';
   if (args.plug === true && args.cennznet === false) {
@@ -176,7 +176,7 @@ function parseCliArguments() {
     },
     fund: args.fund,
     api: api_select,
-    staking_validators: args.add_staking_validators
+    staking_validators: args.staking_validators
   }
   return settings;
 }

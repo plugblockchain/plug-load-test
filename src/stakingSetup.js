@@ -1,7 +1,6 @@
 const { Keyring } = require('@polkadot/api');
 const { makeTransaction } = require('../src/transaction');
 let log = require('console-log-level')({ level: 'info' });
-const DEFAULT_SLEEP = 5000;
 const keyring = new Keyring({ type: 'sr25519' });
 const { sleep } = require('../src/utils')
 
@@ -18,7 +17,7 @@ async function createStashAccounts(api, transaction) {
     this.transaction = transaction
     stashAccount = []
     stashNames = ["BOB_STASH", "CHARLIE_STASH", "EVE_STASH"];
-    aliceKeyring = keyring.addFromUri('//Alice');
+    aliceKeyring = keyring.addFromUri('//Alice', {name: 'Alice'});
 
     for (i = 0; i < stashNames.length; i++) {
         name = stashNames[i];
@@ -147,6 +146,8 @@ async function topUpStashAccount(api, transaction, type, stashAccounts) {
         }
     }
 }
+
+
 
 module.exports = {
     createStashAccounts: createStashAccounts

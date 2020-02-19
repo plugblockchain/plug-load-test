@@ -78,9 +78,4 @@ async function makeTransaction(api, transaction, sender, receiver, funds, timeou
 
   return hash;
 }
-
-module.exports = {
-  makeTransaction: makeTransaction
-}
-
 module.exports.makeTransaction = makeTransaction;
